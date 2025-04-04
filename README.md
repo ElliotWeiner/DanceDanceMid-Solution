@@ -1,2 +1,2 @@
 # DanceDanceMid-Solution
-Dance Dance Revolution, but more complicated
+Dance Dance Revolution with extra steps
