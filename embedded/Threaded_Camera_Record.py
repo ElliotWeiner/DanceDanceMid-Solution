@@ -61,7 +61,6 @@ def stitching():
     else:
         print("Error during stitching:", process.stderr.decode())
 
-print("chk1")
 
 # Create different threads for each video stream, then start them.
 path = r"/Users/elliotweiner/Downloads/ffmpeg"
@@ -70,7 +69,6 @@ thread2 = CamThread(path, "Camera2", 'rtsp://root:botbot@192.168.0.111/axis-medi
 thread3 = CamThread(path, "Camera3", 'rtsp://root:botbot@192.168.0.129/axis-media/media.amp', '/Users/elliotweiner/Desktop/DDR/DanceDanceMid-Solution/dataset/cam3/output1_3.mp4')
 thread4 = CamThread(path, "Camera4", 'rtsp://root:botbot@192.168.0.134/axis-media/media.amp', '/Users/elliotweiner/Desktop/DDR/DanceDanceMid-Solution/dataset/cam4/output1_4.mp4')
 
-print("chk2")
 
 thread1.start()
 thread2.start()
