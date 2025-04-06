@@ -63,7 +63,7 @@ def stitching():
 
 
 # Create different threads for each video stream, then start them.
-path = r"C:\Users\hummy\Downloads\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\bin\ffmpeg.exe"
+path = r"C:\Users\wanga\Downloads\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\bin\ffmpeg.exe"
 thread1 = CamThread(path, "Camera1", 'rtsp://root:botbot@192.168.0.114/axis-media/media.amp', 'output1.mp4')
 thread2 = CamThread(path, "Camera2", 'rtsp://root:botbot@192.168.0.111/axis-media/media.amp', 'output2.mp4')
 thread3 = CamThread(path, "Camera3", 'rtsp://root:botbot@192.168.0.129/axis-media/media.amp', 'output3.mp4')

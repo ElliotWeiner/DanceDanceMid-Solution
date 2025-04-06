@@ -19,9 +19,10 @@ print(path, name)
 # print("Files and directories in '", path, "' :")
 # prints all files
 
+print("Location: vids/" + path)
 
 # for vid_name in dir_list:
-vid = cv2.VideoCapture("vids/" + path)
+vid = cv2.VideoCapture("../vids/" + path)
 
 frames = []
 
@@ -42,6 +43,8 @@ while(vid.isOpened()):
     else:
         break
 
+print("Read: ", len(frames), " frames")
+
 start_time = time.time()
 
 fps = 250 #ms
@@ -50,7 +53,7 @@ counter = 0
 position = 0
 while position < len(frames)-4:
     print(position)
-    image = np.zeros((3, 360, 640, 3), dtype=np.uint8)
+    image = np.zeros((3, 480, 704, 3), dtype=np.uint8)
     for i in range(3):
         # print(i)
         # start_time = time.time()
@@ -64,7 +67,7 @@ while position < len(frames)-4:
         image[i] = frames[position + i]
 
 
-    np.save("dataset/images/" + name + str(counter).zfill(8), image)
+    np.save("../dataset/images/" + name + str(counter).zfill(8), image)
 
     # loaded = np.load("dataset/images/" + name + str(counter) + ".npy")
 

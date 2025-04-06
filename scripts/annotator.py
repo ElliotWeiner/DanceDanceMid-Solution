@@ -21,7 +21,7 @@ print(dir_list)
 for sequence in dir_list:
 
     # frames = []
-    loaded = np.load("dataset/images/" + sequence)
+    loaded = np.load("../dataset/images/" + sequence)
     print(sequence)
     print(loaded.dtype)
     # while(vid.isOpened()):
