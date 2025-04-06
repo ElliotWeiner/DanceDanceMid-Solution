@@ -22,7 +22,7 @@ def recording(camid, outputfile, path):
         path,
         "-i", camid,      # input stream
         "-c", "copy",     # no re-encoding
-        "-t", "00:00:10", # duration (10 seconds)
+        "-t", "00:00:30", # duration (10 seconds)
         outputfile
     ]
 
@@ -63,11 +63,12 @@ def stitching():
 
 
 # Create different threads for each video stream, then start them.
-path = r"C:\Users\wanga\Downloads\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\bin\ffmpeg.exe"
-thread1 = CamThread(path, "Camera1", 'rtsp://root:botbot@192.168.0.114/axis-media/media.amp', 'output1.mp4')
-thread2 = CamThread(path, "Camera2", 'rtsp://root:botbot@192.168.0.111/axis-media/media.amp', 'output2.mp4')
-thread3 = CamThread(path, "Camera3", 'rtsp://root:botbot@192.168.0.129/axis-media/media.amp', 'output3.mp4')
-thread4 = CamThread(path, "Camera4", 'rtsp://root:botbot@192.168.0.134/axis-media/media.amp', 'output4.mp4')
+path = r"/Users/elliotweiner/Downloads/ffmpeg"
+thread1 = CamThread(path, "Camera1", 'rtsp://root:botbot@192.168.0.114/axis-media/media.amp', '/Users/elliotweiner/Desktop/DDR/DanceDanceMid-Solution/dataset/cam1/output1_1.mp4')
+thread2 = CamThread(path, "Camera2", 'rtsp://root:botbot@192.168.0.111/axis-media/media.amp', '/Users/elliotweiner/Desktop/DDR/DanceDanceMid-Solution/dataset/cam2/output1_2.mp4')
+thread3 = CamThread(path, "Camera3", 'rtsp://root:botbot@192.168.0.129/axis-media/media.amp', '/Users/elliotweiner/Desktop/DDR/DanceDanceMid-Solution/dataset/cam3/output1_3.mp4')
+thread4 = CamThread(path, "Camera4", 'rtsp://root:botbot@192.168.0.134/axis-media/media.amp', '/Users/elliotweiner/Desktop/DDR/DanceDanceMid-Solution/dataset/cam4/output1_4.mp4')
+
 
 thread1.start()
 thread2.start()
