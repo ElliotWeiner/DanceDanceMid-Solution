@@ -142,44 +142,47 @@ class DDRGame:
         self.judgments = []  # List of tuples (time, text, position)
         self.key_states = [False, False, False, False]  # Left, Down, Up, Right
         
-from tkinter import filedialog
-import tkinter as tk
-
-def select_sm_file(self):
-    """Open file dialog to select a .sm file"""
-    file_path = filedialog.askopenfilename(
-        title="Select a StepMania (.sm) file",
-        filetypes=[("StepMania files", "*.sm")]
-    )
-
-    if file_path:
-        self.load_sm_file(file_path)
-        self.game_state = "playing"
-        self.song_time = 0
-        self.score = 0
-        self.combo = 0
-        self.max_combo = 0
-        self.hits = 0
-        self.misses = 0
-        self.judgments = []
-
-        # Try to load associated music file
-        music_file = None
-        song_dir = os.path.dirname(file_path)
-
-        # Look for the music file referenced in the SM file
-        if self.sm_data and self.sm_data.title:
-            for ext in ['.mp3', '.ogg', '.wav']:
-                possible_file = os.path.join(song_dir, self.sm_data.title + ext)
-                if os.path.exists(possible_file):
-                    music_file = possible_file
-                    break
-
-        if music_file:
-            pygame.mixer.music.load(music_file)
-            pygame.mixer.music.play()
-            self.current_song = music_file
-    
+    def select_sm_file(self):
+        """Open file dialog to select a .sm file"""
+        root = tk.Tk()
+        root.withdraw()  # Hide the main window
+        
+        file_path = filedialog.askopenfilename(
+            title="Select a StepMania (.sm) file",
+            filetypes=[("StepMania files", "*.sm")]
+        )
+        
+        if file_path:
+            self.load_sm_file(file_path)
+            self.game_state = "playing"
+            self.song_time = 0
+            self.score = 0
+            self.combo = 0
+            self.max_combo = 0
+            self.hits = 0
+            self.misses = 0
+            self.judgments = []
+            
+            # Try to load associated music file
+            music_file = None
+            song_dir = os.path.dirname(file_path)
+            
+            # Look for the music file referenced in the SM file
+            if self.sm_data and self.sm_data.title:
+                # Try common extensions
+                for ext in ['.mp3', '.ogg', '.wav']:
+                    possible_file = os.path.join(song_dir, self.sm_data.title + ext)
+                    if os.path.exists(possible_file):
+                        music_file = possible_file
+                        break
+            
+            if music_file:
+                pygame.mixer.music.load(music_file)
+                pygame.mixer.music.play()
+                self.current_song = music_file
+            
+        root.destroy()
+        
     def load_sm_file(self, file_path):
         """Parse and load SM file data"""
         try:
