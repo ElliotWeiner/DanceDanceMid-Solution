@@ -1,9 +1,7 @@
 import os
 import re
 import pygame
-import tkinter as tk
 import numpy
-from tkinter import filedialog
 import math
 from dataclasses import dataclass
 from typing import List, Dict, Tuple, Optional
@@ -51,6 +49,16 @@ class SMData:
 
 class DDRGame:
     def __init__(self):
+        # Initialize pygame after setup
+        self.pygame_initialized = False
+        self.initialize_pygame()
+        self.setup_game()
+        
+    def initialize_pygame(self):
+        """Initialize or reinitialize pygame"""
+        if self.pygame_initialized:
+            pygame.quit()
+            
         pygame.init()
         pygame.font.init()
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -58,9 +66,9 @@ class DDRGame:
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont('Arial', 24)
         self.small_font = pygame.font.SysFont('Arial', 18)
+        self.pygame_initialized = True
         
         self.load_assets()
-        self.setup_game()
         
     def load_assets(self):
         """Load images and sounds"""
@@ -115,24 +123,22 @@ class DDRGame:
         self.receptor_images[2] = pygame.transform.rotate(self.receptor_images[2], 180) # Up
         self.receptor_images[3] = pygame.transform.rotate(self.receptor_images[3], 270) # Right
         
-        # Use a much simpler approach for sound
+        # Create simple sound objects (fixed to avoid sndarray issue)
         try:
-            # Create dummy surfaces for sounds
-            dummy = pygame.Surface((2, 2))
-            self.hit_sound = pygame.mixer.Sound(pygame.sndarray.array3d(dummy).tobytes())
-            self.miss_sound = pygame.mixer.Sound(pygame.sndarray.array3d(dummy).tobytes())
-        except Exception as e:
-            print(f"Error creating sound: {e}")
-            # Create even simpler sounds as a fallback
+            # Simple sound initialization
             self.hit_sound = pygame.mixer.Sound(buffer=bytes([128] * 1024))
             self.miss_sound = pygame.mixer.Sound(buffer=bytes([128] * 1024))
-
+        except Exception as e:
+            print(f"Error creating sound: {e}")
+            # Create null sounds as a fallback
+            self.hit_sound = pygame.mixer.Sound(buffer=bytes([0]))
+            self.miss_sound = pygame.mixer.Sound(buffer=bytes([0]))
 
     def setup_game(self):
         """Initialize game variables"""
         self.sm_data = None
         self.current_song = None
-        self.game_state = "menu"  # menu, playing, results
+        self.game_state = "menu"  # menu, playing, results, file_selector, message
         self.song_time = 0
         self.score = 0
         self.combo = 0
@@ -141,47 +147,124 @@ class DDRGame:
         self.misses = 0
         self.judgments = []  # List of tuples (time, text, position)
         self.key_states = [False, False, False, False]  # Left, Down, Up, Right
+        self.file_selector_state = {}
+        self.message = ""
         
     def select_sm_file(self):
-        """Open file dialog to select a .sm file"""
-        root = tk.Tk()
-        root.withdraw()  # Hide the main window
+        """Show a pygame-based file selector for .sm files"""
+        # Get the current directory
+        songs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "songs")
         
-        file_path = filedialog.askopenfilename(
-            title="Select a StepMania (.sm) file",
-            filetypes=[("StepMania files", "*.sm")]
-        )
+        # Create songs directory if it doesn't exist
+        if not os.path.exists(songs_dir):
+            os.makedirs(songs_dir)
+            print(f"Created songs directory at {songs_dir}")
+            print("Please place your StepMania (.sm) files in this directory and restart the game.")
+            return
+            
+        # Get list of .sm files
+        sm_files = []
+        for root, dirs, files in os.walk(songs_dir):
+            for file in files:
+                if file.endswith(".sm"):
+                    sm_files.append(os.path.join(root, file))
         
-        if file_path:
-            self.load_sm_file(file_path)
-            self.game_state = "playing"
-            self.song_time = 0
-            self.score = 0
-            self.combo = 0
-            self.max_combo = 0
-            self.hits = 0
-            self.misses = 0
-            self.judgments = []
+        if not sm_files:
+            # No .sm files found, show a message
+            self.game_state = "message"
+            self.message = f"No .sm files found in {songs_dir}.\nPlease add some and restart."
+            print(f"No .sm files found in {songs_dir}")
+            return
             
-            # Try to load associated music file
-            music_file = None
-            song_dir = os.path.dirname(file_path)
-            
-            # Look for the music file referenced in the SM file
-            if self.sm_data and self.sm_data.title:
-                # Try common extensions
-                for ext in ['.mp3', '.ogg', '.wav']:
-                    possible_file = os.path.join(song_dir, self.sm_data.title + ext)
-                    if os.path.exists(possible_file):
-                        music_file = possible_file
-                        break
-            
-            if music_file:
+        # File selector state
+        self.file_selector_state = {
+            "files": sm_files,
+            "selected_index": 0,
+            "scroll_offset": 0,
+            "max_display": 10  # Maximum number of files to display at once
+        }
+        
+        self.game_state = "file_selector"
+        
+    def handle_file_selection(self):
+        """Handle file selection screen events"""
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+                
+            if event.type == pygame.KEYDOWN:
+                print(f"Key pressed: {event.key}")  # Debug print
+                
+                if event.key == pygame.K_ESCAPE:
+                    print("Escape key detected")  # Debug print
+                    self.game_state = "menu"
+                    return True
+                    
+                elif event.key == pygame.K_UP:
+                    print("Up key detected")  # Debug print
+                    self.file_selector_state["selected_index"] = max(
+                        0, self.file_selector_state["selected_index"] - 1)
+                    
+                    # Adjust scroll if necessary
+                    if (self.file_selector_state["selected_index"] < 
+                        self.file_selector_state["scroll_offset"]):
+                        self.file_selector_state["scroll_offset"] = self.file_selector_state["selected_index"]
+                        
+                elif event.key == pygame.K_DOWN:
+                    print("Down key detected")  # Debug print
+                    self.file_selector_state["selected_index"] = min(
+                        len(self.file_selector_state["files"]) - 1, 
+                        self.file_selector_state["selected_index"] + 1)
+                    
+                    # Adjust scroll if necessary
+                    if (self.file_selector_state["selected_index"] >= 
+                        self.file_selector_state["scroll_offset"] + self.file_selector_state["max_display"]):
+                        self.file_selector_state["scroll_offset"] = (self.file_selector_state["selected_index"] - 
+                                                                  self.file_selector_state["max_display"] + 1)
+                
+                # Try multiple key codes for return/enter
+                elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE, 13, 10):
+                    print("Enter/Return/Space key detected")  # Debug print
+                    # Load the selected file
+                    file_path = self.file_selector_state["files"][self.file_selector_state["selected_index"]]
+                    self.load_song(file_path)
+                    return True
+                    
+        return True
+        
+    def load_song(self, file_path):
+        """Load a song from a .sm file path"""
+        self.load_sm_file(file_path)
+        self.game_state = "playing"
+        self.song_time = 0
+        self.score = 0
+        self.combo = 0
+        self.max_combo = 0
+        self.hits = 0
+        self.misses = 0
+        self.judgments = []
+        
+        # Try to load associated music file
+        music_file = None
+        song_dir = os.path.dirname(file_path)
+        
+        # Look for the music file referenced in the SM file
+        if self.sm_data and self.sm_data.title:
+            # Try common extensions
+            for ext in ['.mp3', '.ogg', '.wav']:
+                possible_file = os.path.join(song_dir, self.sm_data.title + ext)
+                if os.path.exists(possible_file):
+                    music_file = possible_file
+                    break
+        
+        if music_file:
+            try:
                 pygame.mixer.music.load(music_file)
                 pygame.mixer.music.play()
                 self.current_song = music_file
-            
-        root.destroy()
+            except Exception as e:
+                print(f"Error loading music file: {e}")
+                self.current_song = None
         
     def load_sm_file(self, file_path):
         """Parse and load SM file data"""
@@ -305,10 +388,63 @@ class DDRGame:
             
             if self.game_state == "menu":
                 if event.type == pygame.KEYDOWN:
+                    print(f"Menu key pressed: {event.key}")  # Debug print
                     if event.key == pygame.K_SPACE:
                         self.select_sm_file()
                     elif event.key == pygame.K_ESCAPE:
                         return False
+                        
+            elif self.game_state == "file_selector":
+                # Process file selector events directly here
+                if event.type == pygame.QUIT:
+                    return False
+                    
+                if event.type == pygame.KEYDOWN:
+                    print(f"File selector key pressed: {event.key}")  # Debug print
+                    
+                    if event.key == pygame.K_ESCAPE:
+                        print("Escape key detected in file selector")  # Debug print
+                        self.game_state = "menu"
+                        
+                    elif event.key == pygame.K_UP:
+                        print("Up key detected in file selector")  # Debug print
+                        self.file_selector_state["selected_index"] = max(
+                            0, self.file_selector_state["selected_index"] - 1)
+                        
+                        # Adjust scroll if necessary
+                        if (self.file_selector_state["selected_index"] < 
+                            self.file_selector_state["scroll_offset"]):
+                            self.file_selector_state["scroll_offset"] = self.file_selector_state["selected_index"]
+                            
+                    elif event.key == pygame.K_DOWN:
+                        print("Down key detected in file selector")  # Debug print
+                        self.file_selector_state["selected_index"] = min(
+                            len(self.file_selector_state["files"]) - 1, 
+                            self.file_selector_state["selected_index"] + 1)
+                        
+                        # Adjust scroll if necessary
+                        if (self.file_selector_state["selected_index"] >= 
+                            self.file_selector_state["scroll_offset"] + self.file_selector_state["max_display"]):
+                            self.file_selector_state["scroll_offset"] = (self.file_selector_state["selected_index"] - 
+                                                                     self.file_selector_state["max_display"] + 1)
+                    
+                    # Try multiple key codes for return/enter
+                    elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER, 13, 10):
+                        print("Enter/Return key detected in file selector")  # Debug print
+                        # Load the selected file
+                        file_path = self.file_selector_state["files"][self.file_selector_state["selected_index"]]
+                        self.load_song(file_path)
+                    
+                    elif event.key == pygame.K_SPACE:
+                        print("Space key detected in file selector")  # Debug print
+                        # Load the selected file
+                        file_path = self.file_selector_state["files"][self.file_selector_state["selected_index"]]
+                        self.load_song(file_path)
+                
+            elif self.game_state == "message":
+                if event.type == pygame.KEYDOWN:
+                    if event.key in (pygame.K_SPACE, pygame.K_RETURN, pygame.K_ESCAPE, 13, 10):
+                        self.game_state = "menu"
                         
             elif self.game_state == "playing":
                 if event.type == pygame.KEYDOWN:
@@ -317,31 +453,31 @@ class DDRGame:
                         if pygame.mixer.music.get_busy():
                             pygame.mixer.music.stop()
                     elif event.key == pygame.K_LEFT:
-                        self.key_states[0] = True  # Corrected to index 0 for left
-                        self.check_note_hit(0)    # Corrected to direction 0 for left
+                        self.key_states[0] = True
+                        self.check_note_hit(0)
                     elif event.key == pygame.K_DOWN:
-                        self.key_states[2] = True  # Corrected to index 1 for down
-                        self.check_note_hit(2)    # Corrected to direction 1 for down
+                        self.key_states[1] = True
+                        self.check_note_hit(1)
                     elif event.key == pygame.K_UP:
-                        self.key_states[1] = True  # Corrected to index 2 for up
-                        self.check_note_hit(1)    # Corrected to direction 2 for up
+                        self.key_states[2] = True
+                        self.check_note_hit(2)
                     elif event.key == pygame.K_RIGHT:
-                        self.key_states[3] = True  # Corrected to index 3 for right
-                        self.check_note_hit(3)    # Corrected to direction 3 for right
+                        self.key_states[3] = True
+                        self.check_note_hit(3)
                         
                 elif event.type == pygame.KEYUP:
                     if event.key == pygame.K_LEFT:
-                        self.key_states[0] = False  # Corrected to index 0 for left
+                        self.key_states[0] = False
                     elif event.key == pygame.K_DOWN:
-                        self.key_states[2] = False  # Corrected to index 1 for down
+                        self.key_states[1] = False
                     elif event.key == pygame.K_UP:
-                        self.key_states[1] = False  # Corrected to index 2 for up
+                        self.key_states[2] = False
                     elif event.key == pygame.K_RIGHT:
-                        self.key_states[3] = False  # Corrected to index 3 for right
+                        self.key_states[3] = False
                         
             elif self.game_state == "results":
                 if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_SPACE or event.key == pygame.K_RETURN:
+                    if event.key in (pygame.K_SPACE, pygame.K_RETURN, 13, 10):
                         self.game_state = "menu"
         
         return True
@@ -530,10 +666,78 @@ class DDRGame:
         self.screen.blit(continue_text, 
                          (SCREEN_WIDTH // 2 - continue_text.get_width() // 2, 400))
     
+    def draw_file_selector(self):
+        """Draw the file selector screen"""
+        self.screen.fill(BLACK)
+        
+        title_text = self.font.render("Select a StepMania File", True, WHITE)
+        self.screen.blit(title_text, 
+                       (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 50))
+        
+        instruction_text = self.small_font.render("UP/DOWN to navigate, ENTER to select, ESC to cancel", True, WHITE)
+        self.screen.blit(instruction_text, 
+                       (SCREEN_WIDTH // 2 - instruction_text.get_width() // 2, 80))
+        
+        # Display files
+        y_position = 120
+        display_start = self.file_selector_state["scroll_offset"]
+        display_end = min(display_start + self.file_selector_state["max_display"],
+                         len(self.file_selector_state["files"]))
+        
+        for i in range(display_start, display_end):
+            file_path = self.file_selector_state["files"][i]
+            file_name = os.path.basename(file_path)
+            
+            # Highlight selected file
+            if i == self.file_selector_state["selected_index"]:
+                pygame.draw.rect(self.screen, BLUE, 
+                               (100, y_position, SCREEN_WIDTH - 200, 30))
+                text_color = WHITE
+            else:
+                text_color = GRAY
+                
+            file_text = self.small_font.render(file_name, True, text_color)
+            self.screen.blit(file_text, (120, y_position + 5))
+            
+            y_position += 40
+            
+        # Draw scroll indicators if needed
+        if display_start > 0:
+            up_text = self.font.render("▲", True, WHITE)
+            self.screen.blit(up_text, 
+                           (SCREEN_WIDTH // 2, 100))
+            
+        if display_end < len(self.file_selector_state["files"]):
+            down_text = self.font.render("▼", True, WHITE)
+            self.screen.blit(down_text, 
+                           (SCREEN_WIDTH // 2, 500))
+            
+    def draw_message(self):
+        """Draw a message screen"""
+        self.screen.fill(BLACK)
+        
+        lines = self.message.split('\n')
+        y_position = SCREEN_HEIGHT // 2 - (len(lines) * 30) // 2
+        
+        for line in lines:
+            text = self.font.render(line, True, WHITE)
+            self.screen.blit(text, 
+                           (SCREEN_WIDTH // 2 - text.get_width() // 2, y_position))
+            y_position += 40
+            
+        continue_text = self.small_font.render("Press any key to continue", True, GRAY)
+        self.screen.blit(continue_text, 
+                       (SCREEN_WIDTH // 2 - continue_text.get_width() // 2, 
+                        SCREEN_HEIGHT - 80))
+    
     def draw(self):
         """Draw the current game state"""
         if self.game_state == "menu":
             self.draw_menu()
+        elif self.game_state == "file_selector":
+            self.draw_file_selector()
+        elif self.game_state == "message":
+            self.draw_message()
         elif self.game_state == "playing":
             self.draw_game()
         elif self.game_state == "results":
