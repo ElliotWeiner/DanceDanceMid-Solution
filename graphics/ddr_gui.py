@@ -456,11 +456,11 @@ class DDRGame:
                         self.key_states[0] = True
                         self.check_note_hit(0)
                     elif event.key == pygame.K_DOWN:
-                        self.key_states[1] = True
-                        self.check_note_hit(1)
-                    elif event.key == pygame.K_UP:
                         self.key_states[2] = True
                         self.check_note_hit(2)
+                    elif event.key == pygame.K_UP:
+                        self.key_states[1] = True
+                        self.check_note_hit(1)
                     elif event.key == pygame.K_RIGHT:
                         self.key_states[3] = True
                         self.check_note_hit(3)
@@ -469,9 +469,9 @@ class DDRGame:
                     if event.key == pygame.K_LEFT:
                         self.key_states[0] = False
                     elif event.key == pygame.K_DOWN:
-                        self.key_states[1] = False
-                    elif event.key == pygame.K_UP:
                         self.key_states[2] = False
+                    elif event.key == pygame.K_UP:
+                        self.key_states[1] = False
                     elif event.key == pygame.K_RIGHT:
                         self.key_states[3] = False
                         
