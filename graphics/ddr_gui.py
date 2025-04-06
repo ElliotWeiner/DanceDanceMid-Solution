@@ -193,11 +193,15 @@ class DDRGame:
                 return False
                 
             if event.type == pygame.KEYDOWN:
+                print(f"Key pressed: {event.key}")  # Debug print
+                
                 if event.key == pygame.K_ESCAPE:
+                    print("Escape key detected")  # Debug print
                     self.game_state = "menu"
                     return True
                     
                 elif event.key == pygame.K_UP:
+                    print("Up key detected")  # Debug print
                     self.file_selector_state["selected_index"] = max(
                         0, self.file_selector_state["selected_index"] - 1)
                     
@@ -207,6 +211,7 @@ class DDRGame:
                         self.file_selector_state["scroll_offset"] = self.file_selector_state["selected_index"]
                         
                 elif event.key == pygame.K_DOWN:
+                    print("Down key detected")  # Debug print
                     self.file_selector_state["selected_index"] = min(
                         len(self.file_selector_state["files"]) - 1, 
                         self.file_selector_state["selected_index"] + 1)
@@ -216,11 +221,14 @@ class DDRGame:
                         self.file_selector_state["scroll_offset"] + self.file_selector_state["max_display"]):
                         self.file_selector_state["scroll_offset"] = (self.file_selector_state["selected_index"] - 
                                                                   self.file_selector_state["max_display"] + 1)
-                        
-                elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                
+                # Try multiple key codes for return/enter
+                elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE, 13, 10):
+                    print("Enter/Return/Space key detected")  # Debug print
                     # Load the selected file
                     file_path = self.file_selector_state["files"][self.file_selector_state["selected_index"]]
                     self.load_song(file_path)
+                    return True
                     
         return True
         
@@ -380,17 +388,62 @@ class DDRGame:
             
             if self.game_state == "menu":
                 if event.type == pygame.KEYDOWN:
+                    print(f"Menu key pressed: {event.key}")  # Debug print
                     if event.key == pygame.K_SPACE:
                         self.select_sm_file()
                     elif event.key == pygame.K_ESCAPE:
                         return False
                         
             elif self.game_state == "file_selector":
-                return self.handle_file_selection()
+                # Process file selector events directly here
+                if event.type == pygame.QUIT:
+                    return False
+                    
+                if event.type == pygame.KEYDOWN:
+                    print(f"File selector key pressed: {event.key}")  # Debug print
+                    
+                    if event.key == pygame.K_ESCAPE:
+                        print("Escape key detected in file selector")  # Debug print
+                        self.game_state = "menu"
+                        
+                    elif event.key == pygame.K_UP:
+                        print("Up key detected in file selector")  # Debug print
+                        self.file_selector_state["selected_index"] = max(
+                            0, self.file_selector_state["selected_index"] - 1)
+                        
+                        # Adjust scroll if necessary
+                        if (self.file_selector_state["selected_index"] < 
+                            self.file_selector_state["scroll_offset"]):
+                            self.file_selector_state["scroll_offset"] = self.file_selector_state["selected_index"]
+                            
+                    elif event.key == pygame.K_DOWN:
+                        print("Down key detected in file selector")  # Debug print
+                        self.file_selector_state["selected_index"] = min(
+                            len(self.file_selector_state["files"]) - 1, 
+                            self.file_selector_state["selected_index"] + 1)
+                        
+                        # Adjust scroll if necessary
+                        if (self.file_selector_state["selected_index"] >= 
+                            self.file_selector_state["scroll_offset"] + self.file_selector_state["max_display"]):
+                            self.file_selector_state["scroll_offset"] = (self.file_selector_state["selected_index"] - 
+                                                                     self.file_selector_state["max_display"] + 1)
+                    
+                    # Try multiple key codes for return/enter
+                    elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER, 13, 10):
+                        print("Enter/Return key detected in file selector")  # Debug print
+                        # Load the selected file
+                        file_path = self.file_selector_state["files"][self.file_selector_state["selected_index"]]
+                        self.load_song(file_path)
+                    
+                    elif event.key == pygame.K_SPACE:
+                        print("Space key detected in file selector")  # Debug print
+                        # Load the selected file
+                        file_path = self.file_selector_state["files"][self.file_selector_state["selected_index"]]
+                        self.load_song(file_path)
                 
             elif self.game_state == "message":
                 if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_SPACE or event.key == pygame.K_RETURN or event.key == pygame.K_ESCAPE:
+                    if event.key in (pygame.K_SPACE, pygame.K_RETURN, pygame.K_ESCAPE, 13, 10):
                         self.game_state = "menu"
                         
             elif self.game_state == "playing":
@@ -424,7 +477,7 @@ class DDRGame:
                         
             elif self.game_state == "results":
                 if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_SPACE or event.key == pygame.K_RETURN:
+                    if event.key in (pygame.K_SPACE, pygame.K_RETURN, 13, 10):
                         self.game_state = "menu"
         
         return True
