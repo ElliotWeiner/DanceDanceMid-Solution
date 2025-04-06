@@ -61,6 +61,7 @@ class DDRGame:
             
         pygame.init()
         pygame.font.init()
+        pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=512)
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("Python DDR Game")
         self.clock = pygame.time.Clock()
@@ -250,21 +251,36 @@ class DDRGame:
         
         # Look for the music file referenced in the SM file
         if self.sm_data and self.sm_data.title:
+            print(f"Looking for music for: {self.sm_data.title}")
             # Try common extensions
             for ext in ['.mp3', '.ogg', '.wav']:
-                possible_file = os.path.join(song_dir, self.sm_data.title + ext)
-                if os.path.exists(possible_file):
-                    music_file = possible_file
+                for file in os.listdir(song_dir):
+                    # Case insensitive comparison
+                    if file.lower().endswith(ext.lower()):
+                        possible_file = os.path.join(song_dir, file)
+                        print(f"Found potential music file: {possible_file}")
+                        music_file = possible_file
+                        break
+                if music_file:
                     break
         
         if music_file:
             try:
+                print(f"Trying to load music file: {music_file}")
+                # Stop any currently playing music
+                pygame.mixer.music.stop()
+                # Initialize mixer if not already done
+                if not pygame.mixer.get_init():
+                    pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=1024)
                 pygame.mixer.music.load(music_file)
                 pygame.mixer.music.play()
                 self.current_song = music_file
+                print(f"Successfully loaded and started playing: {music_file}")
             except Exception as e:
                 print(f"Error loading music file: {e}")
                 self.current_song = None
+        else:
+            print("No matching music file found")
         
     def load_sm_file(self, file_path):
         """Parse and load SM file data"""
