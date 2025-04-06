@@ -22,7 +22,7 @@ print(path, name)
 print("Location: vids/" + path)
 
 # for vid_name in dir_list:
-vid = cv2.VideoCapture("../vids/" + path)
+vid = cv2.VideoCapture(path)
 
 frames = []
 
