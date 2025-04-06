@@ -1,79 +1,96 @@
+#This is the threaded camera recording file. You need to have ffmpeg installed
+#Note: This file will save all the .mp4 files whereever the python file is stored.
+
+#If CONDA look up online if PIP install its: pip install thread6
 import threading
+#Already built into python no need to download
 import subprocess
 import os
+import glob
 
-# Define class for the camera thread.
+#Sets file pathway were the folders and files will exist
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+
+#Defining RTSP URLS (ONLY NEED TO CHECK/CHANGE IF THE CAMERAS LOSE POWER AND TURN OFF)
+cameras = {
+    1: 'rtsp://root:botbot@192.168.0.114/axis-media/media.amp',
+    2: 'rtsp://root:botbot@192.168.0.111/axis-media/media.amp',
+    3: 'rtsp://root:botbot@192.168.0.129/axis-media/media.amp',
+    4: 'rtsp://root:botbot@192.168.0.134/axis-media/media.amp',
+}
+
+#Makes sure camera folder exists
+for cam_num in cameras:
+    cam_folder = os.path.join(script_dir, f"cam{cam_num}")
+    os.makedirs(cam_folder, exist_ok=True)
+
+
+
 class CamThread(threading.Thread):
-    def __init__(self, path, previewname, camid, filename):
-        threading.Thread.__init__(self)
-        self.path = path
-        self.previewname = previewname
-        self.camid = camid
-        self.outputfile = filename
+    def __init__(self, ffmpeg_path, cam_num, rtsp_url):
+        super().__init__()
+        self.ffmpeg = ffmpeg_path
+        self.cam_num = cam_num
+        self.rtsp = rtsp_url
+
+        # — find next 5‑digit index for this camera —
+        cam_folder = os.path.join(script_dir, f"cam{cam_num}")
+        pattern = os.path.join(cam_folder, "output_*.mp4")
+        existing = glob.glob(pattern)
+
+        nums = []
+        for path in existing:
+            name = os.path.splitext(os.path.basename(path))[0]
+            # name is like "output_00005"
+            parts = name.split('_')
+            if len(parts) == 2 and parts[0] == "output":
+                try:
+                    nums.append(int(parts[1]))
+                except ValueError:
+                    pass
+
+        next_index = (max(nums) + 1) if nums else 1
+
+        # — build zero‑padded 5‑digit filename —
+        fname = f"output_{next_index:05d}.mp4"
+        self.outfile = os.path.join(cam_folder, fname)
 
     def run(self):
-        print("Starting " + self.previewname)
-        # Corrected parameter order: camid, outputfile, path
-        recording(self.camid, self.outputfile, self.path)
+        print(f"[Camera {self.cam_num}] Recording → {self.outfile}")
+        self.record()
 
-# Function to preview the camera.
-def recording(camid, outputfile, path):
-    command = [
-        path,
-        "-i", camid,      # input stream
-        "-c", "copy",     # no re-encoding
-        "-t", "00:00:30", # duration (10 seconds)
-        outputfile
-    ]
-
-    # Run FFmpeg
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = process.communicate()
-
-    # Check result
-    if process.returncode == 0:
-        print("Recording complete.")
-        print("Saved to:", os.path.abspath(outputfile))
-    else:
-        print("Error:", stderr.decode())
-
-def stitching():
-    thread1.join()
-    thread2.join()
-    thread3.join()
-    thread4.join()
-
-    # Command to stitch the videos together
-    stitch_command = [
-    path,  # Path to ffmpeg executable
-    '-i', 'output1.mp4',
-    '-i', 'output2.mp4',
-    '-i', 'output3.mp4',
-    '-i', 'output4.mp4',
-    '-filter_complex', 'xstack=inputs=4:layout=0_0|w0_0|0_h0|w0_h0',
-    '-c:v', 'libx264',
-    'combined_output.mp4'
-    ]
-
-    process = subprocess.run(stitch_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if process.returncode == 0:
-        print("Stitching complete. Combined video saved as combined_output.mp4")
-    else:
-        print("Error during stitching:", process.stderr.decode())
+    def record(self):
+        cmd = [
+            self.ffmpeg,
+            "-i", self.rtsp,
+            "-c", "copy",
+            "-t", "00:00:5",  #SET DURATION HERE
+            self.outfile
+        ]
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = p.communicate()
+        if p.returncode == 0:
+            print(f"[Camera {self.cam_num}] Done.")
+        else:
+            print(f"[Camera {self.cam_num} ERROR]:", err.decode())
 
 
-# Create different threads for each video stream, then start them.
-path = r"/Users/elliotweiner/Downloads/ffmpeg"
-thread1 = CamThread(path, "Camera1", 'rtsp://root:botbot@192.168.0.114/axis-media/media.amp', '/Users/elliotweiner/Desktop/DDR/DanceDanceMid-Solution/dataset/cam1/output1_1.mp4')
-thread2 = CamThread(path, "Camera2", 'rtsp://root:botbot@192.168.0.111/axis-media/media.amp', '/Users/elliotweiner/Desktop/DDR/DanceDanceMid-Solution/dataset/cam2/output1_2.mp4')
-thread3 = CamThread(path, "Camera3", 'rtsp://root:botbot@192.168.0.129/axis-media/media.amp', '/Users/elliotweiner/Desktop/DDR/DanceDanceMid-Solution/dataset/cam3/output1_3.mp4')
-thread4 = CamThread(path, "Camera4", 'rtsp://root:botbot@192.168.0.134/axis-media/media.amp', '/Users/elliotweiner/Desktop/DDR/DanceDanceMid-Solution/dataset/cam4/output1_4.mp4')
+#Need to download FFMPEG and set path to YOUR SPECIFIC FILE PATHWAY TO THE .EXE file
+#Windows ffmpeg download windows > gyan.dev > essentials only
+ffmpeg_exe = rpath = r"C:\Users\hummy\Downloads\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\bin\ffmpeg.exe"
+threads = []
 
+#Starts Cameras and Records
+for num, url in cameras.items():
+    t = CamThread(ffmpeg_exe, num, url)
+    t.start()
+    threads.append(t)
 
-thread1.start()
-thread2.start()
-thread3.start()
-thread4.start()
+#Joins files to respective folders
+for t in threads:
+    t.join()
 
-# IF YOU WANT TO STICH ALL THE VIDEOS TOGETHER UNCOMMENT AND RUN THE CODE BELOW
-#stitching()
+#Tells you its complete
+print("All recordings complete.")
+
