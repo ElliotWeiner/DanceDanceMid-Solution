@@ -14,8 +14,8 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 
 #Defining RTSP URLS (ONLY NEED TO CHECK/CHANGE IF THE CAMERAS LOSE POWER AND TURN OFF)
 cameras = {
-    1: 'rtsp://root:botbot@192.168.0.114/axis-media/media.amp',
-    2: 'rtsp://root:botbot@192.168.0.111/axis-media/media.amp',
+    1: 'rtsp://root:botbot@192.168.0.111/axis-media/media.amp',
+    2: 'rtsp://root:botbot@192.168.0.114/axis-media/media.amp',
     3: 'rtsp://root:botbot@192.168.0.129/axis-media/media.amp',
     4: 'rtsp://root:botbot@192.168.0.134/axis-media/media.amp',
 }
@@ -24,6 +24,8 @@ cameras = {
 for cam_num in cameras:
     cam_folder = os.path.join(script_dir, f"cam{cam_num}")
     os.makedirs(cam_folder, exist_ok=True)
+
+start_barrier = threading.Barrier(len(cameras))
 
 
 
@@ -58,16 +60,18 @@ class CamThread(threading.Thread):
 
     def run(self):
         print(f"[Camera {self.cam_num}] Recording → {self.outfile}")
+        start_barrier.wait()
         self.record()
 
     def record(self):
-        cmd = [
+        cmd = [    
             self.ffmpeg,
             "-i", self.rtsp,
             "-c", "copy",
-            "-t", "00:00:5",  #SET DURATION HERE
+            "-t", "00:01:10",  #SET DURATION HERE
             self.outfile
         ]
+        #print(cmd)
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = p.communicate()
         if p.returncode == 0:
@@ -75,13 +79,34 @@ class CamThread(threading.Thread):
         else:
             print(f"[Camera {self.cam_num} ERROR]:", err.decode())
 
+def get_frame_count(video_path):
+    cmd = [
+        ffprobe_exe,
+        "-v", "error",
+        "-select_streams", "v:0",
+        "-count_frames",
+        "-show_entries", "stream=nb_read_frames",
+        "-of", "default=nokey=1:noprint_wrappers=1",
+        video_path
+    ]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, _ = proc.communicate()
+    try:
+        return int(out.strip())
+    except Exception:
+        return None
+
 
 #Need to download FFMPEG and set path to YOUR SPECIFIC FILE PATHWAY TO THE .EXE file
 #Windows ffmpeg download windows > gyan.dev > essentials only
 ffmpeg_exe = rpath = r"C:\Users\hummy\Downloads\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\bin\ffmpeg.exe"
+
+ffprobe_exe = r"C:\Users\hummy\Downloads\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\bin\ffprobe.exe"
+
 threads = []
 
 #Starts Cameras and Records
+print("Starting Recording.\n")
 for num, url in cameras.items():
     t = CamThread(ffmpeg_exe, num, url)
     t.start()
@@ -93,4 +118,12 @@ for t in threads:
 
 #Tells you its complete
 print("All recordings complete.")
+
+for t in threads:
+    frames = get_frame_count(t.outfile)
+    if frames is not None:
+        print(f"{t.outfile}: {frames} frames")
+    else:
+        print(f"{t.outfile}: Unable to determine frame count")
+
 
