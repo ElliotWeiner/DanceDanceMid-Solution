@@ -146,16 +146,19 @@ class DDRDataset(torch.utils.data.Dataset):
         target_right[label_right] = 1.0
 
         # apply transformations if any
-        image1 = image1.permute(0, 3, 1, 2)
-        image3 = image3.permute(0, 3, 1, 2)
+        # image1 = image1.permute(0, 3, 1, 2)
+        image2 = image2.permute(0, 3, 1, 2)
+        # image3 = image3.permute(0, 3, 1, 2)
+        image4 = image4.permute(0, 3, 1, 2)
+
         if self.transform:
-            image1 = self.transform(image1)
-            # image2 = self.transform(image2)
-            image3 = self.transform(image3)
-            # image4 = self.transform(image4)
+            # image1 = self.transform(image1)
+            image2 = self.transform(image2)
+            # image3 = self.transform(image3)
+            image4 = self.transform(image4)
 
         # images = [image1, image2, image3, image4]
-        images = [image1, image3]
+        images = [image2, image4]
 
         targets = [target_left, target_right]
 
