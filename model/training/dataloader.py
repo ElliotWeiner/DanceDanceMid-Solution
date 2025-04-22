@@ -131,10 +131,10 @@ class DDRDataset(torch.utils.data.Dataset):
         '''
         # print("cam1......", len(self.cam1_data), "  index: ", index)
         # fix path separators for the current OS (replace backslashes with forward slashes)
-        image1 = torch.from_numpy(self.cam1_data[index]).float()
-        # image2 = torch.from_numpy(self.cam2_data[index]).float()
-        image3 = torch.from_numpy(self.cam3_data[index]).float()
-        # image4 = torch.from_numpy(self.cam4_data[index]).float()
+        # image1 = torch.from_numpy(self.cam1_data[index]).float()
+        image2 = torch.from_numpy(self.cam2_data[index]).float()
+        # image3 = torch.from_numpy(self.cam3_data[index]).float()
+        image4 = torch.from_numpy(self.cam4_data[index]).float()
         label_left = self.labels_left[index]
         label_right = self.labels_right[index]
 
