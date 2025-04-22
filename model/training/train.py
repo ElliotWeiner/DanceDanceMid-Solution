@@ -29,11 +29,12 @@ def train_the_feet(save_path, lr, num_povs, MAX):
 
     gpu = torch.device('cuda')
 
-    feet_net = FeetNet(2).to(gpu)
+    feet_net = FeetNet(num_povs).to(gpu)
     optimizer = torch.optim.Adam(feet_net.parameters(), lr=lr)
+    criterion = torch.nn.CrossEntropyLoss()
 
     nr_epochs = 100
-    batch_size = 8
+    batch_size = 16
     start_time = time.time()
 
     all_data = getloaders(MAX, batch_size)
@@ -48,6 +49,8 @@ def train_the_feet(save_path, lr, num_povs, MAX):
 
     losses = []
     for epoch in range(nr_epochs):
+        total_loss_l = 0
+        total_loss_r = 0
         total_loss = 0
         batch_in = []
         batch_gt = []
@@ -59,17 +62,39 @@ def train_the_feet(save_path, lr, num_povs, MAX):
 
 
         for batch_idx, batch in enumerate(train_loader):
-            batch_in_image, batch_gt = batch[0][0].to(gpu), batch[1].to(gpu)
-
-            batch_out = feet_net(batch_in_image[0], batch_in_image[2])
-            batch_gt = feet_net.actions_to_classes(batch_gt)
-
-            loss = cross_entropy_loss(batch_out, batch_gt)
+            # print(batch)
+            batch_in_image_1, batch_in_image_3, batch_gt_left, batch_gt_right = batch[0][0].to(gpu), batch[0][1].to(gpu), batch[1][0].to(gpu), batch[1][1].to(gpu)
 
             optimizer.zero_grad()
+
+            # print(batch_in_image_1.shape)
+            batch_out_left, batch_out_right = feet_net(batch_in_image_1, batch_in_image_3)
+
+            # print(batch_out_left.shape)
+            # print(batch_gt_left.shape)
+            # print(batch_gt_left, batch_out_left)
+            batch_out_left = batch_out_left.squeeze(0)
+            batch_out_right = batch_out_right.squeeze(0)
+            loss_l = criterion(batch_out_left, batch_gt_left)
+            loss_r = criterion(batch_out_right, batch_gt_right)
+            loss = loss_l + loss_r
+
             loss.backward()
             optimizer.step()
+            total_loss_l += loss_l
+            total_loss_r += loss_r
             total_loss += loss
+            # running_loss += loss
+
+            if batch_idx % 10 == 9:
+                last_loss = total_loss / 10 # loss per batch
+                last_ll = total_loss_l / 10
+                last_lr = total_loss_r / 10
+
+                print('batch {} loss: {}, ll: {}, lr: {}'.format(batch_idx + 1, last_loss, last_ll, last_lr))
+                total_loss = 0.
+                total_loss_l = 0.
+                total_loss_r = 0.
         
 
         ######################################################################
@@ -82,11 +107,11 @@ def train_the_feet(save_path, lr, num_povs, MAX):
         lrBefore = optimizer.param_groups[0]["lr"]
         lrAfter = optimizer.param_groups[0]["lr"]
 
-        print("Epoch %5d\t[Train]\tloss: %.6f\tlrb: %.8f\tlra: %.8f \tETA: +%fs" % (
-            epoch + 1, total_loss, lrBefore, lrAfter, time_left))
+        print("Epoch %5d\t[Train]\tloss: %.6f\tloss_l: %.6f\tloss_r: %.6f\tlrb: %.8f\tlra: %.8f \tETA: +%fs" % (
+            epoch + 1, last_loss, last_ll, last_lr, lrBefore, lrAfter, time_left))
 
-        losses.append(total_loss)
-        if total_loss <= 0.01:
+        losses.append(last_loss)
+        if last_loss <= 0.01:
             break
 
     
@@ -97,6 +122,9 @@ def train_the_feet(save_path, lr, num_povs, MAX):
 
     print("Training finished in %.2fm" % (time.time() - start_time)/60)
     print("Total loss: ", total_loss)
+    print("Total_loss_l: ", total_loss_l)
+    print("Total_loss_l: ", total_loss_r)
+
     
     cpuLoss = [loss.cpu().detach().float() for loss in losses]
 
@@ -111,32 +139,6 @@ def train_the_feet(save_path, lr, num_povs, MAX):
     plt.title("Epoch vs Training Loss")
     plt.savefig('training_loss_class.png')
     plt.show()
-
-
-######################################################################
-# DEF LOSS
-######################################################################
-
-
-def cross_entropy_loss(batch_out, batch_gt):
-    """
-    Calculates the cross entropy loss between the prediction of the network and
-    the ground truth class for one batch.
-                    C = number of classes
-    batch_out:      torch.Tensor of size (batch_size, C)
-    batch_gt:       torch.Tensor of size (batch_size, C)
-    return          float
-    """
-
-    #loss = -1/len(y_true) * np.sum(np.sum(y_true * np.log(y_pred)))
-    batch_gt = torch.tensor(batch_gt).cuda()
-    lpred = torch.log(batch_out)
-    ytruelogpred = torch.mul(batch_gt, lpred)
-    loss_tensor = -torch.mean(torch.sum(ytruelogpred, dim=1))
-
-    return loss_tensor
-
-
 
 ######################################################################
 # TRAINING LOOP

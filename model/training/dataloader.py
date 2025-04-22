@@ -28,9 +28,6 @@ import torchvision.transforms as transforms
 #     FILE_NAME_right.csv
 #     FILE_NAME_left.csv
 
-
-
-
 class DDRDataset(torch.utils.data.Dataset):
     def __init__(self, file_name_orig, dataroot, MAX, transform=None):
         '''
@@ -109,24 +106,22 @@ class DDRDataset(torch.utils.data.Dataset):
           # DATA
           ######################################################################
 
-
           # for each sample
-          for i in range(cnt):
+          for i in range(cnt-1):
             num = str(i).zfill(5)
 
             name = file_name + "/" + file_name + "_" + num + ".npy"
             #load in npy
             self.cam1_data.append(np.load(dataroot + "images1/" + name))
-            self.cam2_data.append(np.load(dataroot + "images2/" + name))
+            # self.cam2_data.append(np.load(dataroot + "images2/" + name))
             self.cam3_data.append(np.load(dataroot + "images3/" + name))
-            self.cam4_data.append(np.load(dataroot + "images4/" + name))
+            # self.cam4_data.append(np.load(dataroot + "images4/" + name))
 
-
-
+        #   print(len(self.labels_left), len(self.labels_right), len(self.cam1_data), len(self.cam3_data))
 
     def __len__(self):
         '''Return length of the dataset.'''
-        return len(self.labels_left)
+        return len(self.cam1_data)
 
     # change
     def __getitem__(self, index):
@@ -134,12 +129,12 @@ class DDRDataset(torch.utils.data.Dataset):
         Return the ((image1, image2, image3, image4), (label_left, left_right)) tuple.
         This function gets called when you index the dataset.
         '''
-
+        # print("cam1......", len(self.cam1_data), "  index: ", index)
         # fix path separators for the current OS (replace backslashes with forward slashes)
         image1 = torch.from_numpy(self.cam1_data[index]).float()
-        image2 = torch.from_numpy(self.cam2_data[index]).float()
+        # image2 = torch.from_numpy(self.cam2_data[index]).float()
         image3 = torch.from_numpy(self.cam3_data[index]).float()
-        image4 = torch.from_numpy(self.cam4_data[index]).float()
+        # image4 = torch.from_numpy(self.cam4_data[index]).float()
         label_left = self.labels_left[index]
         label_right = self.labels_right[index]
 
@@ -151,18 +146,22 @@ class DDRDataset(torch.utils.data.Dataset):
         target_right[label_right] = 1.0
 
         # apply transformations if any
+        image1 = image1.permute(0, 3, 1, 2)
+        image3 = image3.permute(0, 3, 1, 2)
         if self.transform:
             image1 = self.transform(image1)
-            image2 = self.transform(image2)
+            # image2 = self.transform(image2)
             image3 = self.transform(image3)
-            image4 = self.transform(image4)
+            # image4 = self.transform(image4)
 
-        images = [image1, image2, image3, image4]
+        # images = [image1, image2, image3, image4]
+        images = [image1, image3]
+
         targets = [target_left, target_right]
 
         return images, targets
 
-def getloaders(MAX, batchsize=8):
+def getloaders(MAX, batch_size=8):
     ######################################################################
     # INIT
     ######################################################################
@@ -175,7 +174,9 @@ def getloaders(MAX, batchsize=8):
 
     # define transforms
     transform = transforms.Compose([
-        transforms.ToTensor(),
+        #transforms.ToTensor(),
+        transforms.Resize(size=(156, 156)),
+        # transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         transforms.RandomRotation(degrees=10)
     ])
 

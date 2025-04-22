@@ -9,12 +9,12 @@ import torchvision
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
-import torch_tensorrt
+# import torch_tensorrt
 
 import math
 import time, gc
-from torch.nn.modules.utils import _triple
-from torch.profiler import profile, record_function, ProfilerActivity
+# from torch.nn.modules.utils import _triple
+# from torch.profiler import profile, record_function, ProfilerActivity
 
 
 
@@ -134,6 +134,11 @@ class FeetNet(nn.Module):
         # pov2_maps = self.pool(torch.reshape(self.pov2_r2p1d_conv(v2), (-1, 256, 32, 32)))
         # pov3_maps = self.pool(torch.reshape(self.pov3_r2p1d_conv(v3), (-1, 256, 32, 32)))
         # pov4_maps = self.pool(torch.reshape(self.pov4_r2p1d_conv(v4), (-1, 256, 32, 32)))
+        # print("before", v1.shape)
+        # v1 = v1.permute(0, 1, 4, 2, 3)
+        # v2 = v2.permute(0, 1, 4, 2, 3)
+        # print("after", v1.shape)
+
 
         pov1_maps = self.backbone_r2p1d_conv(v1)
         pov2_maps = self.backbone_r2p1d_conv(v2)
@@ -172,7 +177,7 @@ class FeetNet(nn.Module):
         rx = self.relu(self.r_fc1(x))
         rx = self.r_fc2(rx)
         
-        l_scores = F.softmax(lx, dim=-1)
-        r_scores = F.softmax(rx, dim=-1)
+        # l_scores = F.softmax(lx, dim=-1)
+        # r_scores = F.softmax(rx, dim=-1)
         
-        return l_scores, r_scores
+        return lx, rx
