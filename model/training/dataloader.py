@@ -176,7 +176,7 @@ def getloaders(MAX, batch_size=8):
     transform = transforms.Compose([
         #transforms.ToTensor(),
         transforms.Resize(size=(156, 156)),
-        # transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         transforms.RandomRotation(degrees=10)
     ])
 
