@@ -112,16 +112,16 @@ class DDRDataset(torch.utils.data.Dataset):
 
             name = file_name + "/" + file_name + "_" + num + ".npy"
             #load in npy
-            self.cam1_data.append(np.load(dataroot + "images1/" + name))
-            # self.cam2_data.append(np.load(dataroot + "images2/" + name))
-            self.cam3_data.append(np.load(dataroot + "images3/" + name))
-            # self.cam4_data.append(np.load(dataroot + "images4/" + name))
+            # self.cam1_data.append(np.load(dataroot + "images1/" + name))
+            self.cam2_data.append(np.load(dataroot + "images2/" + name))
+            # self.cam3_data.append(np.load(dataroot + "images3/" + name))
+            self.cam4_data.append(np.load(dataroot + "images4/" + name))
 
         #   print(len(self.labels_left), len(self.labels_right), len(self.cam1_data), len(self.cam3_data))
 
     def __len__(self):
         '''Return length of the dataset.'''
-        return len(self.cam1_data)
+        return len(self.cam2_data)
 
     # change
     def __getitem__(self, index):
