@@ -5,7 +5,7 @@
 #
 # Sample Usage: python3 dataloader.py
 
-
+import random
 import torch
 import numpy as np
 import torchvision.transforms as transforms
@@ -107,7 +107,7 @@ class DDRDataset(torch.utils.data.Dataset):
           ######################################################################
 
           # for each sample
-          for i in range(cnt-1):
+          for i in range(cnt):
             num = str(i).zfill(5)
 
             name = file_name + "/" + file_name + "_" + num + ".npy"
@@ -117,11 +117,36 @@ class DDRDataset(torch.utils.data.Dataset):
             # self.cam3_data.append(np.load(dataroot + "images3/" + name))
             self.cam4_data.append(np.load(dataroot + "images4/" + name))
 
-        #   print(len(self.labels_left), len(self.labels_right), len(self.cam1_data), len(self.cam3_data))
+        print(len(self.labels_left), len(self.labels_right))#, len(self.cam2_data), len(self.cam4_data))
+
+        # random.seed(seed)
+        l_targets = np.asarray(self.labels_left)
+        r_targets = np.asarray(self.labels_right)
+        cam2 = np.asarray(self.cam2_data)
+        cam4 = np.asarray(self.cam4_data)
+        class_indices = np.where((l_targets == 4.0) & (r_targets == 4.0))[0]
+        other_indices = np.where((l_targets != 4.0) | (r_targets != 4.0))[0]
+
+
+        num_to_keep = int(len(class_indices) * 0.75)
+        keep_indices = random.sample(list(class_indices), num_to_keep)
+
+        # Keep all other class indices
+        final_indices = np.concatenate([keep_indices, other_indices])
+        np.random.shuffle(final_indices)
+        self.labels_left_bal = l_targets[final_indices]#torch.utils.data.Subset(l_targets, final_indices)
+        self.labels_righ_bal = r_targets[final_indices]#torch.utils.data.Subset(r_targets, final_indices)
+        # self.cam2_data_bal = cam2[final_indices]
+        # self.cam4_data_bal = cam4[final_indices]
+
+        # print("Left Before: ", len(self.labels_left))
+        # print("Left After: ", self.labels_left_bal.shape)
+        print(len(self.labels_left_bal), len(self.labels_righ_bal))#, len(self.cam2_data_bal), len(self.cam4_data_bal))
+
 
     def __len__(self):
         '''Return length of the dataset.'''
-        return len(self.cam2_data)
+        return len(self.labels_left_bal)
 
     # change
     def __getitem__(self, index):
@@ -135,8 +160,8 @@ class DDRDataset(torch.utils.data.Dataset):
         image2 = torch.from_numpy(self.cam2_data[index]).float()
         # image3 = torch.from_numpy(self.cam3_data[index]).float()
         image4 = torch.from_numpy(self.cam4_data[index]).float()
-        label_left = self.labels_left[index]
-        label_right = self.labels_right[index]
+        label_left = self.labels_left_bal[index]
+        label_right = self.labels_righ_bal[index]
 
         # convert labels to one hot encoding
         target_left = torch.zeros(5)
@@ -158,6 +183,7 @@ class DDRDataset(torch.utils.data.Dataset):
             image4 = self.transform(image4)
 
         # images = [image1, image2, image3, image4]
+        # print(image2.shape, image4.shape, target_left, target_right)
         images = [image2, image4]
 
         targets = [target_left, target_right]
@@ -178,7 +204,7 @@ def getloaders(MAX, batch_size=8):
     # define transforms
     transform = transforms.Compose([
         #transforms.ToTensor(),
-        transforms.Resize(size=(156, 156)),
+        transforms.Resize(size=(160, 160)),
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
         transforms.RandomRotation(degrees=10)
     ])

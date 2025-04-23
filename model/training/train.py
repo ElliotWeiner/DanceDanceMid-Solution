@@ -32,7 +32,7 @@ def train_the_feet(save_path, lr, num_povs, MAX):
     feet_net = FeetNet(num_povs).to(gpu)
     optimizer = torch.optim.Adam(feet_net.parameters(), lr=lr)
     optimizer = torch.optim.SGD(feet_net.parameters(), lr=lr, momentum=0.9)
-    scheduler = lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=0.1, total_iters=30)
+    scheduler = lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=0.2, total_iters=50)
     criterion = torch.nn.CrossEntropyLoss()
 
     nr_epochs = 100
@@ -112,6 +112,11 @@ def train_the_feet(save_path, lr, num_povs, MAX):
 
         print("Epoch %5d\t[Train]\tloss: %.6f\tloss_l: %.6f\tloss_r: %.6f\tlrb: %.8f\tlra: %.8f \tETA: +%fs" % (
             epoch + 1, last_loss, last_ll, last_lr, lrBefore, lrAfter, time_left))
+        
+        if epoch % 10 == 0 and epoch != 0:
+            print("Saving Model Checkpoint")
+            torch.save(feet_net, save_path + str(epoch) + "-feet_net.pth")
+
 
         losses.append(last_loss)
         if last_loss <= 0.01:
@@ -123,7 +128,7 @@ def train_the_feet(save_path, lr, num_povs, MAX):
     ######################################################################
 
 
-    print("Training finished in %.2fm" % (time.time() - start_time)/60)
+    print("Training finished in %.2fm" % (time.time() - start_time)/60.0)
     print("Total loss: ", total_loss)
     print("Total_loss_l: ", total_loss_l)
     print("Total_loss_l: ", total_loss_r)
