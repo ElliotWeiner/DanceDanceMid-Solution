@@ -17,6 +17,41 @@ import torch.optim.lr_scheduler as lr_scheduler
 from FeetNet import FeetNet
 from dataloader import DDRDataset, getloaders
 
+import torch
+
+def calculate_accuracy(model, testloader, device=None):
+
+
+    correct_predictions = 0
+    total_samples = 0
+
+    # disable gradient calc
+    with torch.no_grad():
+        # iterate over testloader
+        for inputs, labels in testloader:
+            # move data to the specified device
+            inputs = inputs.to(device)
+            labels = labels.to(device)
+
+            # model predictions
+            outputs = model(inputs)
+
+            # max index
+            _, predicted = torch.max(outputs.data, 1)
+
+            # update total samples
+            total_samples += labels.size(0)
+
+            # Compare predicted classes with true labels
+            correct_predictions += (predicted == labels).sum().item()
+
+    # calculate accuracy
+    accuracy = 100 * correct_predictions / total_samples if total_samples > 0 else 0.0
+
+    return accuracy
+
+
+
 def train_the_feet(save_path, lr, num_povs, MAX):
     """
     Function for training the network. You can make changes (e.g., add validation dataloader, change batch_size and #of epoch) accordingly.
@@ -27,7 +62,7 @@ def train_the_feet(save_path, lr, num_povs, MAX):
     ######################################################################
 
     print("Starting Training")
-    gpu = torch.device('cuda')
+    gpu = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     feet_net = FeetNet(num_povs).to(gpu)
     #optimizer = torch.optim.Adam(feet_net.parameters(), lr=lr)
@@ -49,6 +84,7 @@ def train_the_feet(save_path, lr, num_povs, MAX):
     ######################################################################
     print_interval = 5#int(len(train_loader)/batch_size)//2
     losses = []
+    accuracy = []
     for epoch in range(nr_epochs):
         total_loss_l = 0
         total_loss_r = 0
@@ -115,6 +151,15 @@ def train_the_feet(save_path, lr, num_povs, MAX):
         if epoch % 100 == 0 and epoch != 0:
             print("Saving Model Checkpoint")
             torch.save(feet_net, save_path + str(epoch) + "-feet_net.pth")
+
+        
+        # check accuracy every 5 epochs
+        feet_net.eval()
+        test_accuracy = calculate_accuracy(feet_net, test_loader, gpu)
+        accuracy.append(test_accuracy)
+        print(f"Test Accuracy: {test_accuracy:.2f}%")
+        feet_net.train()
+
 
         losses.append(last_loss)
         if last_loss <= 0.01:
