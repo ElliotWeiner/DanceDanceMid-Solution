@@ -119,6 +119,9 @@ class DDRDataset(torch.utils.data.Dataset):
 
         print(len(self.labels_left), len(self.labels_right))#, len(self.cam2_data), len(self.cam4_data))
 
+		#self.labels_left = self.labels_left[:10]
+
+
         # random.seed(seed)
         l_targets = np.asarray(self.labels_left)
         r_targets = np.asarray(self.labels_right)
@@ -128,8 +131,11 @@ class DDRDataset(torch.utils.data.Dataset):
         other_indices = np.where((l_targets != 4.0) | (r_targets != 4.0))[0]
 
 
-        num_to_keep = int(len(class_indices) * 0.75)
+        #num_to_keep = int(len(class_indices))#* 0.75)
+        num_to_keep = 600
         keep_indices = random.sample(list(class_indices), num_to_keep)
+        
+        #other_indices = random.sample(list(other_indices), 800)
 
         # Keep all other class indices
         final_indices = np.concatenate([keep_indices, other_indices])
@@ -184,6 +190,9 @@ class DDRDataset(torch.utils.data.Dataset):
 
         # images = [image1, image2, image3, image4]
         # print(image2.shape, image4.shape, target_left, target_right)
+        image2 = image2.permute(1, 0, 2, 3)
+        image4 = image4.permute(1, 0, 2, 3)
+        
         images = [image2, image4]
 
         targets = [target_left, target_right]
@@ -203,7 +212,6 @@ def getloaders(MAX, batch_size=8):
 
     # define transforms
     transform = transforms.Compose([
-        #transforms.ToTensor(),
         transforms.Resize(size=(160, 160)),
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
         transforms.RandomRotation(degrees=10)

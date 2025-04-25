@@ -26,16 +26,16 @@ def train_the_feet(save_path, lr, num_povs, MAX):
     # INIT
     ######################################################################
 
-
+    print("Starting Training")
     gpu = torch.device('cuda')
 
     feet_net = FeetNet(num_povs).to(gpu)
-    optimizer = torch.optim.Adam(feet_net.parameters(), lr=lr)
+    #optimizer = torch.optim.Adam(feet_net.parameters(), lr=lr)
     optimizer = torch.optim.SGD(feet_net.parameters(), lr=lr, momentum=0.9)
-    scheduler = lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=0.2, total_iters=50)
+    scheduler = lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=0.2, total_iters=300)
     criterion = torch.nn.CrossEntropyLoss()
 
-    nr_epochs = 100
+    nr_epochs = 500
     batch_size = 16
     start_time = time.time()
 
@@ -47,8 +47,7 @@ def train_the_feet(save_path, lr, num_povs, MAX):
     ######################################################################
     # TRAINING LOOP - FOR EACH EPOCH
     ######################################################################
-
-
+    print_interval = 5#int(len(train_loader)/batch_size)//2
     losses = []
     for epoch in range(nr_epochs):
         total_loss_l = 0
@@ -88,10 +87,10 @@ def train_the_feet(save_path, lr, num_povs, MAX):
             total_loss += loss
             # running_loss += loss
 
-            if batch_idx % 10 == 9:
-                last_loss = total_loss / 10 # loss per batch
-                last_ll = total_loss_l / 10
-                last_lr = total_loss_r / 10
+            if batch_idx % print_interval == print_interval - 1:
+                last_loss = total_loss / print_interval # loss per batch
+                last_ll = total_loss_l / print_interval
+                last_lr = total_loss_r / print_interval
 
                 print('batch {} loss: {}, ll: {}, lr: {}'.format(batch_idx + 1, last_loss, last_ll, last_lr))
                 total_loss = 0.
@@ -107,16 +106,15 @@ def train_the_feet(save_path, lr, num_povs, MAX):
         time_per_epoch = (time.time() - start_time) / (epoch + 1)
         time_left = (1.0 * time_per_epoch) * (nr_epochs - 1 - epoch)
         lrBefore = optimizer.param_groups[0]["lr"]
-        scheduler.step()
+        #scheduler.step()
         lrAfter = optimizer.param_groups[0]["lr"]
 
         print("Epoch %5d\t[Train]\tloss: %.6f\tloss_l: %.6f\tloss_r: %.6f\tlrb: %.8f\tlra: %.8f \tETA: +%fs" % (
             epoch + 1, last_loss, last_ll, last_lr, lrBefore, lrAfter, time_left))
         
-        if epoch % 10 == 0 and epoch != 0:
+        if epoch % 100 == 0 and epoch != 0:
             print("Saving Model Checkpoint")
             torch.save(feet_net, save_path + str(epoch) + "-feet_net.pth")
-
 
         losses.append(last_loss)
         if last_loss <= 0.01:
@@ -128,7 +126,6 @@ def train_the_feet(save_path, lr, num_povs, MAX):
     ######################################################################
 
 
-    print("Training finished in %.2fm" % (time.time() - start_time)/60.0)
     print("Total loss: ", total_loss)
     print("Total_loss_l: ", total_loss_l)
     print("Total_loss_l: ", total_loss_r)
@@ -137,10 +134,10 @@ def train_the_feet(save_path, lr, num_povs, MAX):
     cpuLoss = [loss.cpu().detach().float() for loss in losses]
 
     
-    torch.save(feet_net, save_path + "feet_net.pth")
-    epochs = list(range(nr_epochs))
-    print(epochs)
-    print(cpuLoss)
+    torch.save(feet_net, save_path + "final_feet_net.pth")
+    epochs = list(len(cpuLoss))
+    print(epochs);
+    print(cpuLoss);
     plt.plot(epochs, cpuLoss)
     plt.xlabel("Epoch")
     plt.ylabel("Loss")

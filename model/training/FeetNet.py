@@ -18,6 +18,8 @@ import time, gc
 
 
 
+
+
 class MultiViewCrossAttention(nn.Module):
     def __init__(self, channels, num_views):
         super().__init__()
@@ -98,8 +100,12 @@ class FeetNet(nn.Module):
         super().__init__()
         
         self.num_views = num_views
-        self.backbone_r2p1d_conv = nn.Sequential(*list(models.video.r2plus1d_18(pretrained=True, progress=True).children())[:-3])
-        self.pov2_r2p1d_conv = nn.Sequential(*list(models.video.r2plus1d_18(pretrained=True, progress=True).children())[:-3])
+        #self.backbone1_swin3d_conv = nn.Sequential(*list(models.video.swin3d_t(pretrained=True, progress=True).children()))
+        #self.backbone2_swin3d_conv = nn.Sequential(*list(models.video.swin3d_t(pretrained=True, progress=True).children()))
+        
+        #print(self.backbone1_swin3d_conv)
+        self.backbone1_r2p1d_conv = nn.Sequential(*list(models.video.r2plus1d_18(pretrained=False, progress=True).children())[:-3])
+        self.backbone2_r2p1d_conv = nn.Sequential(*list(models.video.r2plus1d_18(pretrained=False, progress=True).children())[:-3])
         # self.pov3_r2p1d_conv = nn.Sequential(*list(models.video.r2plus1d_18(pretrained=True, progress=True).children())[:-3])
         # self.pov4_r2p1d_conv = nn.Sequential(*list(models.video.r2plus1d_18(pretrained=True, progress=True).children())[:-3])
         
@@ -111,16 +117,27 @@ class FeetNet(nn.Module):
         # self.multiview_cross_attention4 = MultiViewCrossAttention(256, self.num_views)
         # self.pool = nn.MaxPool2d(2)
         
-        self.fc1 = nn.Linear(256, 256)
-        self.fc2 = nn.Linear(256, 128)
+        #self.fc1 = nn.Linear(256, 1024)
+        self.fc1 = nn.Linear(204800, 10420)
+        #self.fc2 = nn.Linear(1024, 1024)
+        self.fc2 = nn.Linear(10420, 2048)
+        #self.fc3 = nn.Linear(1024, 512)
+        self.fc3 = nn.Linear(2048, 512)
         
-        self.l_fc1 = nn.Linear(128, 32)
-        self.l_fc2 = nn.Linear(32, 5)
+        self.fc_bn1 = nn.BatchNorm1d(1024)
+        self.fc_bn2 = nn.BatchNorm1d(512)
         
-        self.r_fc1 = nn.Linear(128, 32)
-        self.r_fc2 = nn.Linear(32, 5)
+        self.dropout = nn.Dropout()
         
-        self.relu = nn.ReLU()
+        self.l_fc1 = nn.Linear(512, 256)
+        self.l_fc2 = nn.Linear(256, 32)
+        self.l_fc3 = nn.Linear(32, 5)
+        
+        self.r_fc1 = nn.Linear(512, 256)
+        self.r_fc2 = nn.Linear(256, 32)
+        self.r_fc3 = nn.Linear(32, 5)
+        
+        self.activation = nn.ReLU()
 
       
 
@@ -140,42 +157,49 @@ class FeetNet(nn.Module):
         # print("after", v1.shape)
 
 
-        pov1_maps = self.backbone_r2p1d_conv(v1)
-        pov2_maps = self.backbone_r2p1d_conv(v2)
+        pov1_maps = self.backbone1_r2p1d_conv(v1)
+        pov2_maps = self.backbone2_r2p1d_conv(v2)
         # pov3_maps = self.pov3_r2p1d_conv(v3)
         # pov4_maps = self.pov4_r2p1d_conv(v4)
         dims = pov2_maps.shape
         # print(pov2_maps.shape)
 
-        pov1_maps = torch.reshape((pov1_maps), (-1, dims[1], dims[3], dims[4]))
-        pov2_maps = torch.reshape((pov2_maps), (-1, dims[1], dims[3], dims[4]))
+        #pov1_maps = torch.reshape((pov1_maps), (-1, dims[1], dims[3], dims[4]))
+        #pov2_maps = torch.reshape((pov2_maps), (-1, dims[1], dims[3], dims[4]))
         
-        povs = torch.stack((pov1_maps, pov2_maps))#, pov3_maps, pov4_maps]
+        #povs = torch.stack((pov1_maps, pov2_maps))#, pov3_maps, pov4_maps]
 
-        hw_dims = dims[3:]
+        #hw_dims = dims[3:]
     
-        attention_out1 = self.multiview_cross_attention1(0, povs, hw_dims)
-        attention_out2 = self.multiview_cross_attention2(1, povs, hw_dims)
+        #attention_out1 = self.multiview_cross_attention1(0, povs, hw_dims)
+        #attention_out2 = self.multiview_cross_attention2(1, povs, hw_dims)
         # attention_out3 = self.multiview_cross_attention3(2, povs)
         # attention_out4 = self.multiview_cross_attention4(3, povs)
         
-        combined = torch.stack((attention_out1, attention_out2))#, attention_out3, attention_out4))
+        #combined = torch.stack((attention_out1, attention_out2))#, attention_out3, attention_out4))
         
 #         print(attention_out1.shape)
 #         print(combined.shape)
         
-        meaned = torch.mean(combined, 0, True)
+        #meaned = torch.mean(combined, 0, True)
         
 #         print(meaned.shape)
+        p1 = self.flat(pov1_maps)
+        p2 = self.flat(pov2_maps)
+        meaned = torch.cat((p1, p2), dim=1)
+        #print(p1.shape)
+        x = self.activation(self.fc1(meaned))
+        x = self.activation(self.fc2(x))
+        x = self.activation(self.fc3(x))
+        #x = self.activation(self.fc4(x))
         
-        x = self.relu(self.fc1(meaned))
-        x = self.relu(self.fc2(x))
+        lx = self.activation(self.l_fc1(x))
+        lx = self.activation(self.l_fc2(lx))
+        lx = self.l_fc3(lx)
         
-        lx = self.relu(self.l_fc1(x))
-        lx = self.l_fc2(lx)
-        
-        rx = self.relu(self.r_fc1(x))
-        rx = self.r_fc2(rx)
+        rx = self.activation(self.r_fc1(x))
+        rx = self.activation(self.r_fc2(rx))
+        rx = self.r_fc3(rx)
         
         # l_scores = F.softmax(lx, dim=-1)
         # r_scores = F.softmax(rx, dim=-1)
