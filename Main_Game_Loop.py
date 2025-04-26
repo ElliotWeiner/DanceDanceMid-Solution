@@ -1,9 +1,9 @@
 #GAME LOOP THIS BITCH AH
 
-from DDC import ddc_downloader
-from graphics import ddr_gui
-from model import tensorRT
-from embedded import something_to_get_camera
+from DDC import ddc_downloader # ddc_downloader.ddc()
+from graphics import ddr_gui 
+from model import tensorRT # tensorRT.inference(), tensorRT.init()
+from embedded import embedded_functions # embedded_functions.step() on every iteration
 
 
 #Start Game
