@@ -3,6 +3,8 @@ import re
 import pygame
 import numpy
 import math
+import sys
+
 from dataclasses import dataclass
 from typing import List, Dict, Tuple, Optional
 
@@ -150,12 +152,11 @@ class DDRGame:
         self.key_states = [False, False, False, False]  # Left, Down, Up, Right
         self.file_selector_state = {}
         self.message = ""
-        
     def select_sm_file(self):
         """Show a pygame-based file selector for .sm files"""
-        # Get the current directory
-        songs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "songs")
-        
+        # Define the songs directory relative to the current file
+        songs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), './songs'))
+
         # Create songs directory if it doesn't exist
         if not os.path.exists(songs_dir):
             os.makedirs(songs_dir)
