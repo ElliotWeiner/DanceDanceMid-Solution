@@ -117,8 +117,8 @@ class FeetNet(nn.Module):
         # self.multiview_cross_attention4 = MultiViewCrossAttention(256, self.num_views)
         # self.pool = nn.MaxPool2d(2)
         
-        #self.fc1 = nn.Linear(256, 1024)
-        self.fc1 = nn.Linear(204800, 10420)
+        self.fc1 = nn.Linear(256, 10420)
+        #self.fc1 = nn.Linear(204800, 10420)
         #self.fc2 = nn.Linear(1024, 1024)
         self.fc2 = nn.Linear(10420, 2048)
         #self.fc3 = nn.Linear(1024, 512)
@@ -164,29 +164,29 @@ class FeetNet(nn.Module):
         dims = pov2_maps.shape
         # print(pov2_maps.shape)
 
-        #pov1_maps = torch.reshape((pov1_maps), (-1, dims[1], dims[3], dims[4]))
-        #pov2_maps = torch.reshape((pov2_maps), (-1, dims[1], dims[3], dims[4]))
+        pov1_maps = torch.reshape((pov1_maps), (-1, dims[1], dims[3], dims[4]))
+        pov2_maps = torch.reshape((pov2_maps), (-1, dims[1], dims[3], dims[4]))
         
-        #povs = torch.stack((pov1_maps, pov2_maps))#, pov3_maps, pov4_maps]
+        povs = torch.stack((pov1_maps, pov2_maps))#, pov3_maps, pov4_maps]
 
-        #hw_dims = dims[3:]
+        hw_dims = dims[3:]
     
-        #attention_out1 = self.multiview_cross_attention1(0, povs, hw_dims)
-        #attention_out2 = self.multiview_cross_attention2(1, povs, hw_dims)
+        attention_out1 = self.multiview_cross_attention1(0, povs, hw_dims)
+        attention_out2 = self.multiview_cross_attention2(1, povs, hw_dims)
         # attention_out3 = self.multiview_cross_attention3(2, povs)
         # attention_out4 = self.multiview_cross_attention4(3, povs)
         
-        #combined = torch.stack((attention_out1, attention_out2))#, attention_out3, attention_out4))
+        combined = torch.stack((attention_out1, attention_out2))#, attention_out3, attention_out4))
         
 #         print(attention_out1.shape)
 #         print(combined.shape)
         
-        #meaned = torch.mean(combined, 0, True)
+        meaned = torch.mean(combined, 0, True)
         
 #         print(meaned.shape)
-        p1 = self.flat(pov1_maps)
-        p2 = self.flat(pov2_maps)
-        meaned = torch.cat((p1, p2), dim=1)
+        #p1 = self.flat(pov1_maps)
+        #p2 = self.flat(pov2_maps)
+        #meaned = torch.cat((p1, p2), dim=1)
         #print(p1.shape)
         x = self.activation(self.fc1(meaned))
         x = self.activation(self.fc2(x))

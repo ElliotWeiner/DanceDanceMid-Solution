@@ -21,34 +21,51 @@ import torch
 
 def calculate_accuracy(model, testloader, device=None):
 
-
-    correct_predictions = 0
+    correct_predictions_l = 0
+    correct_predictions_r = 0
     total_samples = 0
-
+    model.eval()
     # disable gradient calc
     with torch.no_grad():
         # iterate over testloader
-        for inputs, labels in testloader:
+        for batch_idx, batch in enumerate(testloader):
             # move data to the specified device
-            inputs = inputs.to(device)
-            labels = labels.to(device)
+            
+            batch_in_image_1, batch_in_image_3, batch_gt_left, batch_gt_right = batch[0][0].to(device), batch[0][1].to(device), batch[1][0].to(device), batch[1][1].to(device)
 
             # model predictions
-            outputs = model(inputs)
+            batch_out_left, batch_out_right = model(batch_in_image_1, batch_in_image_3)
 
+            batch_out_left = torch.nn.functional.softmax(batch_out_left.squeeze(0), dim=1)
+            batch_out_right = torch.nn.functional.softmax(batch_out_right.squeeze(0), dim=1)
+            
             # max index
-            _, predicted = torch.max(outputs.data, 1)
+            _, pr_l = torch.max(batch_out_left.data, 1)
+            _, pr_r = torch.max(batch_out_right.data, 1)
+            _, gt_l = torch.max(batch_gt_left.data, 1)
+            _, gt_r = torch.max(batch_gt_right.data, 1)
+            
+            print(pr_l, gt_l, pr_r, gt_r)
+            
+            #print(predicted_l.shape, batch_gt_left.shape)
 
             # update total samples
-            total_samples += labels.size(0)
+            total_samples += batch_gt_right.size(0)
 
             # Compare predicted classes with true labels
-            correct_predictions += (predicted == labels).sum().item()
+            correct_predictions_l += (pr_l == gt_l).sum().item()
+            correct_predictions_r += (pr_r == gt_r).sum().item()
+            
+            #print(correct_predictions_l, correct_predictions_r)
+
 
     # calculate accuracy
-    accuracy = 100 * correct_predictions / total_samples if total_samples > 0 else 0.0
+    accuracy_l = 100 * correct_predictions_l / total_samples if total_samples > 0 else 0.0
+    accuracy_r = 100 * correct_predictions_r / total_samples if total_samples > 0 else 0.0
+    #accuracy_t = 100 * (correct_predictions_l + correct_predictions_r) / total_samples if total_samples > 0 and total_samples > 0 else 0.0
 
-    return accuracy
+	
+    return accuracy_l, accuracy_r#, accuracy_t
 
 
 
@@ -62,11 +79,11 @@ def train_the_feet(save_path, lr, num_povs, MAX):
     ######################################################################
 
     print("Starting Training")
-    gpu = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    feet_net = FeetNet(num_povs).to(gpu)
+    feet_net = FeetNet(num_povs).to(device)
     #optimizer = torch.optim.Adam(feet_net.parameters(), lr=lr)
-    optimizer = torch.optim.SGD(feet_net.parameters(), lr=lr, momentum=0.9)
+    optimizer = torch.optim.SGD(feet_net.parameters(), lr=lr, momentum=0.9, weight_decay=1e-4)
     scheduler = lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=0.2, total_iters=300)
     criterion = torch.nn.CrossEntropyLoss()
 
@@ -84,7 +101,10 @@ def train_the_feet(save_path, lr, num_povs, MAX):
     ######################################################################
     print_interval = 5#int(len(train_loader)/batch_size)//2
     losses = []
-    accuracy = []
+    l_losses = []
+    r_losses = []
+    acc_l = []
+    acc_r = []
     for epoch in range(nr_epochs):
         total_loss_l = 0
         total_loss_r = 0
@@ -97,10 +117,10 @@ def train_the_feet(save_path, lr, num_povs, MAX):
         # FOR EACH BATCH
         ######################################################################
 
-
+        feet_net.train()
         for batch_idx, batch in enumerate(train_loader):
             # print(batch)
-            batch_in_image_1, batch_in_image_3, batch_gt_left, batch_gt_right = batch[0][0].to(gpu), batch[0][1].to(gpu), batch[1][0].to(gpu), batch[1][1].to(gpu)
+            batch_in_image_1, batch_in_image_3, batch_gt_left, batch_gt_right = batch[0][0].to(device), batch[0][1].to(device), batch[1][0].to(device), batch[1][1].to(device)
 
             optimizer.zero_grad()
 
@@ -154,15 +174,23 @@ def train_the_feet(save_path, lr, num_povs, MAX):
 
         
         # check accuracy every 5 epochs
-        feet_net.eval()
-        test_accuracy = calculate_accuracy(feet_net, test_loader, gpu)
-        accuracy.append(test_accuracy)
-        print(f"Test Accuracy: {test_accuracy:.2f}%")
-        feet_net.train()
+        #feet_net.eval()
+        if epoch % 5 == 0 and epoch != 0:
+            test_accuracy_l, test_accuracy_r = calculate_accuracy(feet_net, test_loader, device)
+            acc_l.append(test_accuracy_l)
+            acc_r.append(test_accuracy_r)
+            print("Test Accuracy L: %.6f" % (test_accuracy_l))
+            print("Test Accuracy R: %.6f" % (test_accuracy_r))
 
-
+        l_losses.append(last_ll)
+        r_losses.append(last_lr)
         losses.append(last_loss)
-        if last_loss <= 0.01:
+        if last_loss <= 0.02 or (last_ll <= 0.02 and last_lr <= 0.02):
+            test_accuracy_l, test_accuracy_r = calculate_accuracy(feet_net, test_loader, device)
+            acc_l.append(test_accuracy_l)
+            acc_r.append(test_accuracy_r)
+            print("Test Accuracy L: %.6f" % (test_accuracy_l))
+            print("Test Accuracy R: %.6f" % (test_accuracy_r))
             break
 
     
@@ -171,22 +199,27 @@ def train_the_feet(save_path, lr, num_povs, MAX):
     ######################################################################
 
 
-    print("Total loss: ", total_loss)
-    print("Total_loss_l: ", total_loss_l)
-    print("Total_loss_l: ", total_loss_r)
+    print("Last loss: ", last_loss)
+    print("Last_loss_l: ", last_ll)
+    print("Last_loss_r: ", last_lr)
 
     
     cpuLoss = [loss.cpu().detach().float() for loss in losses]
+    cpuLossL = [loss.cpu().detach().float() for loss in l_losses]
+    cpuLossR = [loss.cpu().detach().float() for loss in r_losses]
 
     
     torch.save(feet_net, save_path + "final_feet_net.pth")
     epochs = list(len(cpuLoss))
     print(epochs);
     print(cpuLoss);
-    plt.plot(epochs, cpuLoss)
+    tl = plt.plot(epochs, cpuLoss, label="Total Loss")
+    ll = plt.plot(epochs, cpuLossL, label="L Loss")
+    rl = plt.plot(epochs, cpuLossR, label="R Loss")
     plt.xlabel("Epoch")
-    plt.ylabel("Loss")
+    plt.ylabel("Losses")
     plt.title("Epoch vs Training Loss")
+    plt.legend([tl, ll, rl])
     plt.savefig('training_loss_class.png')
     plt.show()
 

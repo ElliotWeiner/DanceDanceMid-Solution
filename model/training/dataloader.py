@@ -213,8 +213,14 @@ def getloaders(MAX, batch_size=8):
     # define transforms
     transform = transforms.Compose([
         transforms.Resize(size=(160, 160)),
+        transforms.ColorJitter(0.1, 0.1, 0.1, 0.1),
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-        transforms.RandomRotation(degrees=10)
+        transforms.RandomRotation(degrees=15)
+    ])
+    
+    transform_test = transforms.Compose([
+        transforms.Resize(size=(160, 160)),
+        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
     ])
 
 
