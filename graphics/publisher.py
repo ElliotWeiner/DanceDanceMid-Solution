@@ -40,8 +40,8 @@ def start_publisher():
             print(f"Sent: {data}")
             counter += 1
             
-            # Sleep for a second before sending next data
-            time.sleep(1)
+            # Sleep for a very short time before sending next data
+            time.sleep(0.01)  # Send 100 messages per second
     
     except KeyboardInterrupt:
         print("Publisher terminated by user")

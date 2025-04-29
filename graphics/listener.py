@@ -40,13 +40,13 @@ def start_listener():
                 try:
                     # Parse JSON message
                     parsed_data = json.loads(message)
-                    print(f"Received: {parsed_data}")
                     
-                    # You can process the data here as needed
-                    # For example, you might want to:
-                    # - Store it in a database
-                    # - Trigger some action based on the data
-                    # - Transform it and pass it to another component
+                    # Print only essential information for faster display
+                    print(f"Received #{parsed_data['counter']}: {parsed_data['message']}")
+                    
+                    # Force flush the output buffer to ensure real-time printing
+                    import sys
+                    sys.stdout.flush()
                     
                 except json.JSONDecodeError:
                     print(f"Failed to parse message: {message}")
