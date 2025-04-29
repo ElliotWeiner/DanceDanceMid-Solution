@@ -164,7 +164,7 @@ def upload_fill_and_submit(driver, file_path, artist_name, song_title, difficult
     print("Submitted! Now waiting for file to appear...")
     return wait_for_zip_file(os.path.join(os.getcwd(), 'downloads'))
 
-def process_downloaded_zip(zip_path, output_folder):
+def process_downloaded_zip(zip_path, output_folder, song_title, artist_name):
     print("Processing downloaded ZIP...")
 
     temp_extract_folder = os.path.join(os.getcwd(), "temp_extracted")
@@ -186,8 +186,11 @@ def process_downloaded_zip(zip_path, output_folder):
         print("No .sm file found inside the ZIP!")
         return
 
-    # Move the .sm file to the output folder
-    new_sm_path = os.path.join(output_folder, 'stepfile.sm')
+    # Create the new filename in the format 'Title - Artist.sm'
+    safe_filename = sanitize_filename(f"{song_title} - {artist_name}")
+    new_sm_path = os.path.join(output_folder, f"{safe_filename}.sm")
+    
+    # Move the .sm file to the output folder with the new name
     shutil.copy(sm_file_path, new_sm_path)
     print(f"Saved step file to: {new_sm_path}")
 
@@ -233,8 +236,7 @@ def main():
         zip_path = upload_fill_and_submit(driver, mp3_file, artist_name, song_title, difficulty)
         
         if zip_path:
-            process_downloaded_zip(zip_path, song_dir)
-            
+            process_downloaded_zip(zip_path, song_dir, song_title, artist_name)            
             # Clean up the downloaded zip file
             os.remove(zip_path)
             print(f"Temporary ZIP file deleted.")
