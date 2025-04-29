@@ -12,12 +12,15 @@
 #running from gui:
 import os
 import sys
+# Set python search paths
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../graphics')))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../DDC')))
 
+# Run DDC
 import ddc_downloader
 ddc_downloader.main()
 
+# Run Game GUI
 import ddr_gui
 ddr_gui.DDRGame().run()
 # game.run()
