@@ -13,10 +13,14 @@
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../graphics')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../DDC')))
 
-import ddr_gui  
-game = ddr_gui.DDRGame()
-game.run()
+import ddc_downloader
+ddc_downloader.main()
+
+import ddr_gui
+ddr_gui.DDRGame().run()
+# game.run()
 
 
 
