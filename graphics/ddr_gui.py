@@ -152,10 +152,13 @@ class DDRGame:
         self.key_states = [False, False, False, False]  # Left, Down, Up, Right
         self.file_selector_state = {}
         self.message = ""
+        
     def select_sm_file(self):
         """Show a pygame-based file selector for .sm files"""
-        # Define the songs directory relative to the current file
-        songs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), './songs'))
+        # Define the songs directory in MAIN_GAME_LOOP folder
+        songs_dir = os.path.abspath(os.path.join(os.getcwd(), 'songs'))
+        
+        print(f"Looking for song files in: {songs_dir}")
 
         # Create songs directory if it doesn't exist
         if not os.path.exists(songs_dir):
@@ -170,6 +173,11 @@ class DDRGame:
             for file in files:
                 if file.endswith(".sm"):
                     sm_files.append(os.path.join(root, file))
+        
+        # Debug: List found files
+        print(f"Found {len(sm_files)} SM files:")
+        for file in sm_files:
+            print(f"  - {file}")
         
         if not sm_files:
             # No .sm files found, show a message

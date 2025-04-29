@@ -12,6 +12,13 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
+def sanitize_filename(filename):
+    # Replace invalid characters for filenames
+    invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|']
+    for char in invalid_chars:
+        filename = filename.replace(char, '_')
+    return filename
+
 def sanitize_difficulty(input_diff):
     valid_difficulties = ["Beginner", "Easy", "Medium", "Hard", "Challenge"]
     input_diff = input_diff.strip().capitalize()
@@ -23,11 +30,12 @@ def sanitize_difficulty(input_diff):
     print(f"Invalid difficulty '{input_diff}'. Defaulting to 'Medium'.")
     return "Medium"
 
-def download_audio(youtube_url):
+def download_audio(youtube_url, output_folder):
     print("Downloading audio from YouTube...")
+    mp3_path = os.path.join(output_folder, 'audio.mp3')
     ydl_opts = {
         'format': 'bestaudio/best',
-        'outtmpl': 'downloaded_audio.%(ext)s',
+        'outtmpl': os.path.join(output_folder, 'downloaded_audio.%(ext)s'),
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
@@ -40,15 +48,23 @@ def download_audio(youtube_url):
 
     print("Audio download complete.")
 
+    # Find the downloaded mp3 file
+    for file in os.listdir(output_folder):
+        if file.endswith('.mp3'):
+            mp3_file = os.path.join(output_folder, file)
+            break
+    else:
+        print("Error: MP3 file not found after download")
+        return None
+
     # Check file size
-    mp3_file = 'downloaded_audio.mp3'
     size_MB = os.path.getsize(mp3_file) / (1024 * 1024)
     print(f"Downloaded MP3 size: {size_MB:.2f} MB")
 
     if size_MB > 16:
         print("MP3 is too large. Compressing to smaller bitrate...")
 
-        compressed_file = 'compressed_audio.mp3'
+        compressed_file = os.path.join(output_folder, 'compressed_audio.mp3')
         subprocess.run([
             'ffmpeg', '-y', '-i', mp3_file, '-b:a', '128k', compressed_file
         ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -59,7 +75,12 @@ def download_audio(youtube_url):
         size_MB_after = os.path.getsize(mp3_file) / (1024 * 1024)
         print(f"Compressed MP3 size: {size_MB_after:.2f} MB")
 
-    return mp3_file
+    # Rename to final output name
+    final_mp3 = os.path.join(output_folder, 'audio.mp3')
+    if mp3_file != final_mp3:
+        os.rename(mp3_file, final_mp3)
+
+    return final_mp3
 
 def setup_driver(download_folder):
     options = Options()
@@ -143,7 +164,7 @@ def upload_fill_and_submit(driver, file_path, artist_name, song_title, difficult
     print("Submitted! Now waiting for file to appear...")
     return wait_for_zip_file(os.path.join(os.getcwd(), 'downloads'))
 
-def process_downloaded_zip(zip_path, artist_name, song_title, difficulty):
+def process_downloaded_zip(zip_path, output_folder):
     print("Processing downloaded ZIP...")
 
     temp_extract_folder = os.path.join(os.getcwd(), "temp_extracted")
@@ -165,25 +186,21 @@ def process_downloaded_zip(zip_path, artist_name, song_title, difficulty):
         print("No .sm file found inside the ZIP!")
         return
 
-    # Create Step Board Files folder
-    step_board_folder = os.path.join(os.getcwd(), "Step Board Files")
-    if not os.path.exists(step_board_folder):
-        os.makedirs(step_board_folder)
-
-    # Create new filename
-    safe_song_title = song_title.replace("/", "_")
-    safe_artist_name = artist_name.replace("/", "_")
-    new_filename = f"{safe_song_title} by {safe_artist_name} - Difficulty: {difficulty}.sm"
-    new_filepath = os.path.join(step_board_folder, new_filename)
-
-    shutil.move(sm_file_path, new_filepath)
-
-    print(f"Saved cleaned step file: {new_filepath}")
+    # Move the .sm file to the output folder
+    new_sm_path = os.path.join(output_folder, 'stepfile.sm')
+    shutil.copy(sm_file_path, new_sm_path)
+    print(f"Saved step file to: {new_sm_path}")
 
     # Cleanup
     shutil.rmtree(temp_extract_folder)
 
 def main():
+    # Create base songs directory if it doesn't exist
+    songs_base_dir = os.path.join(os.getcwd(), 'songs')
+    if not os.path.exists(songs_base_dir):
+        os.makedirs(songs_base_dir)
+
+    # Create downloads folder if it doesn't exist
     download_folder = os.path.join(os.getcwd(), 'downloads')
     if not os.path.exists(download_folder):
         os.makedirs(download_folder)
@@ -194,22 +211,39 @@ def main():
     difficulty_input = input("Select Difficulty (Beginner, Easy, Medium, Hard, Challenge): ").strip()
 
     difficulty = sanitize_difficulty(difficulty_input)
-
-    mp3_file = download_audio(youtube_url)
+    
+    # Create a safe directory name
+    safe_song_name = sanitize_filename(f"{song_title} - {artist_name}")
+    song_dir = os.path.join(songs_base_dir, safe_song_name)
+    
+    # Create song directory if it doesn't exist
+    if not os.path.exists(song_dir):
+        os.makedirs(song_dir)
+    
+    # Download audio directly to the song directory
+    mp3_file = download_audio(youtube_url, song_dir)
+    
+    if not mp3_file:
+        print("Error: Failed to download or process audio file")
+        return
 
     driver = setup_driver(download_folder)
 
     try:
         zip_path = upload_fill_and_submit(driver, mp3_file, artist_name, song_title, difficulty)
+        
+        if zip_path:
+            process_downloaded_zip(zip_path, song_dir)
+            
+            # Clean up the downloaded zip file
+            os.remove(zip_path)
+            print(f"Temporary ZIP file deleted.")
+            
+            print(f"Success! Files saved to: {song_dir}")
+            print(f"  - MP3: {os.path.join(song_dir, 'audio.mp3')}")
+            print(f"  - Step file: {os.path.join(song_dir, 'stepfile.sm')}")
     finally:
         driver.quit()
-
-    if os.path.exists(mp3_file):
-        os.remove(mp3_file)
-        print("Temporary MP3 file deleted.")
-
-    if zip_path:
-        process_downloaded_zip(zip_path, artist_name, song_title, difficulty)
 
     print("Done! All files processed.")
 
