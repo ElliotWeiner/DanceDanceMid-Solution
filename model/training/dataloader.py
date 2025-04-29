@@ -8,6 +8,7 @@
 import random
 import torch
 import numpy as np
+import matplotlib.pyplot as plt
 import torchvision.transforms as transforms
 
 # File System Structure
@@ -132,10 +133,12 @@ class DDRDataset(torch.utils.data.Dataset):
 
 
         #num_to_keep = int(len(class_indices))#* 0.75)
-        num_to_keep = 600
+        num_to_keep = 800
         keep_indices = random.sample(list(class_indices), num_to_keep)
+        #keep_indices = class_indices
+
         
-        #other_indices = random.sample(list(other_indices), 800)
+        #other_indices = random.sample(list(other_indices), 400)
 
         # Keep all other class indices
         final_indices = np.concatenate([keep_indices, other_indices])
@@ -148,11 +151,21 @@ class DDRDataset(torch.utils.data.Dataset):
         # print("Left Before: ", len(self.labels_left))
         # print("Left After: ", self.labels_left_bal.shape)
         print(len(self.labels_left_bal), len(self.labels_righ_bal))#, len(self.cam2_data_bal), len(self.cam4_data_bal))
+        
+        self.actual_labels = []
+																																													#[U, D, L, R, UD, UL, UR, LR, RD, DL, N]
+																																													#[0, 1, 2, 3, 4,  5,  6,  7,  8,  9,  10]
+		
+        mapping = {(0, 0): 0, (0, 4): 0, (4, 0): 0, (1, 1): 1, (4, 1): 1, (1, 4): 1, (2, 2): 2, (2, 4): 2, (4, 2): 2, (3, 3): 3, (3, 4): 3, (4, 3): 3, (4, 4): 10, (0, 1): 4, (1, 0): 4, (0, 2): 5, (2, 0): 5, (0, 3): 6, (3, 0): 6, (2, 3): 7, (3, 2): 7, (1, 3): 8, (3, 1): 8, (1, 2): 9, (2, 1): 9}
+        for l, r in zip(self.labels_left_bal, self.labels_righ_bal):
+            #if mapping[(l, r)] == 0 or mapping[(l, r)] == 1:
+            self.actual_labels.append(mapping[(l, r)])
+			
 
 
     def __len__(self):
         '''Return length of the dataset.'''
-        return len(self.labels_left_bal)
+        return len(self.actual_labels)
 
     # change
     def __getitem__(self, index):
@@ -163,24 +176,38 @@ class DDRDataset(torch.utils.data.Dataset):
         # print("cam1......", len(self.cam1_data), "  index: ", index)
         # fix path separators for the current OS (replace backslashes with forward slashes)
         # image1 = torch.from_numpy(self.cam1_data[index]).float()
+        #test = self.cam2_data[index]
+        #test = test[-1, :, :, :]
+        #print(test.shape)
+        #plt.imshow(test)
+        #plt.show()
         image2 = torch.from_numpy(self.cam2_data[index]).float()
         # image3 = torch.from_numpy(self.cam3_data[index]).float()
         image4 = torch.from_numpy(self.cam4_data[index]).float()
-        label_left = self.labels_left_bal[index]
-        label_right = self.labels_righ_bal[index]
-
+        #label_left = self.labels_left_bal[index]
+        #label_right = self.labels_righ_bal[index]
+        #image2 = image2[-1, :, :, :].squeeze(0)
+        #print(image2)
+        #print(image2.shape)
+        #image4 = image4[-1, :, :, :].squeeze(0)
         # convert labels to one hot encoding
-        target_left = torch.zeros(5)
-        target_left[label_left] = 1.0
+        #target_left = torch.zeros(5)
+        #target_left[label_left] = 1.0
 
-        target_right = torch.zeros(5)
-        target_right[label_right] = 1.0
-
+        #target_right = torch.zeros(5)
+        #target_right[label_right] = 1.0
+        target = torch.zeros(11)
+        target[self.actual_labels[index]] = 1.0
+        
+        #plt.imshow(image2 * 255.0)
+        #plt.show()
         # apply transformations if any
-        # image1 = image1.permute(0, 3, 1, 2)
+        #image2 = image2.permute(2, 0, 1)
         image2 = image2.permute(0, 3, 1, 2)
-        # image3 = image3.permute(0, 3, 1, 2)
+        #image4 = image4.permute(2, 0, 1)
         image4 = image4.permute(0, 3, 1, 2)
+        
+        
 
         if self.transform:
             # image1 = self.transform(image1)
@@ -190,14 +217,19 @@ class DDRDataset(torch.utils.data.Dataset):
 
         # images = [image1, image2, image3, image4]
         # print(image2.shape, image4.shape, target_left, target_right)
+        
         image2 = image2.permute(1, 0, 2, 3)
         image4 = image4.permute(1, 0, 2, 3)
+        #print(image2.shape)
         
+        #test = image2.permute(1, 2, 0)
+        #plt.imshow(test)
+        #plt.show()
         images = [image2, image4]
 
-        targets = [target_left, target_right]
+        #targets = [target_left, target_right]
 
-        return images, targets
+        return images, target#targets
 
 def getloaders(MAX, batch_size=8):
     ######################################################################
@@ -212,15 +244,15 @@ def getloaders(MAX, batch_size=8):
 
     # define transforms
     transform = transforms.Compose([
-        transforms.Resize(size=(160, 160)),
-        transforms.ColorJitter(0.1, 0.1, 0.1, 0.1),
-        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-        transforms.RandomRotation(degrees=15)
+        transforms.Resize(size=(112, 112)),
+        #transforms.ColorJitter(0.1, 0.1, 0.1, 0.1),
+        transforms.Normalize((0.4316, 0.3945, 0.3765), (0.228, 0.2215, 0.2170)),
+        transforms.RandomRotation(degrees=20)
     ])
     
     transform_test = transforms.Compose([
-        transforms.Resize(size=(160, 160)),
-        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        transforms.Resize(size=(112, 112)),
+        transforms.Normalize((0.4316, 0.3945, 0.3765), (0.228, 0.2215, 0.2170))
     ])
 
 
