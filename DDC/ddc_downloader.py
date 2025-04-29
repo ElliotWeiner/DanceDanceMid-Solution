@@ -247,6 +247,11 @@ def main():
     finally:
         driver.quit()
 
+    # Remove the downloads folder
+    if os.path.exists(download_folder):
+        shutil.rmtree(download_folder)
+        print("Downloads folder removed.")
+
     print("Done! All files processed.")
 
 if __name__ == "__main__":
