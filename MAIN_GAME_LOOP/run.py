@@ -15,8 +15,8 @@ import sys
 import argparse
 
 # Set python search paths
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../graphics')))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../DDC')))
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../graphics')))
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../DDC')))
 
 # # Run DDC
 # import ddc_downloader
