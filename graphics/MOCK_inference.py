@@ -1,8 +1,9 @@
-# stream_detector.py
 import random
 import time
 import pygame
 import sys
+import socket
+import json
 
 def mock_inference():
     """
@@ -21,11 +22,11 @@ def mock_inference():
 def get_direction_name(direction_code):
     """Convert direction code to human-readable name"""
     directions = {
-        0: "UP    ",
-        1: "DOWN  ",
-        2: "LEFT  ",
-        3: "RIGHT ",
-        4: "NONE  "
+        0: "UP",
+        1: "DOWN",
+        2: "LEFT",
+        3: "RIGHT",
+        4: "NONE"
     }
     return directions.get(direction_code, "UNKNOWN")
 
@@ -33,10 +34,25 @@ def main():
     """Main function to stream detection results"""
     print("Starting input detection stream. Press Ctrl+C to exit.")
     print("="*50)
-    print("| DETECTED INPUT | CONFIDENCE | TIMESTAMP      |")
+    print("| DETECTED INPUT | CONFIDENCE | TIMESTAMP |")
     print("="*50)
     
+    # Initialize socket server
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    host = 'localhost'
+    port = 12345
+    
     try:
+        # Bind socket to address and port
+        server_socket.bind((host, port))
+        # Listen for incoming connections
+        server_socket.listen(1)
+        print(f"Publisher listening on {host}:{port}")
+        
+        # Accept a connection
+        client_socket, client_address = server_socket.accept()
+        print(f"Connection established with: {client_address}")
+        
         # Initialize pygame for keyboard handling
         pygame.init()
         screen = pygame.display.set_mode((400, 300))
@@ -44,6 +60,7 @@ def main():
         
         current_direction = 4  # Start with no input
         confidence = 0.0
+        counter = 0  # Message counter
         
         while True:
             # Check for quit event
@@ -52,7 +69,6 @@ def main():
                     pygame.quit()
                     print("\nDetection stream ended.")
                     return
-                
                 # Allow manual direction setting with arrow keys for testing
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_UP:
@@ -82,16 +98,41 @@ def main():
             # Current timestamp
             timestamp = time.strftime("%H:%M:%S.%f")[:-3]
             
-            # Display current detection
+            # Direction name
             direction_name = get_direction_name(current_direction)
+            
+            # Create JSON message to send
+            counter += 1
+            message = {
+                "counter": counter,
+                "direction_code": current_direction,
+                "direction": direction_name,
+                "confidence": round(confidence, 2),
+                "timestamp": timestamp,
+                "message": f"{direction_name} (conf: {confidence:.2f})"
+            }
+            
+            # Send message to client
+            try:
+                json_message = json.dumps(message) + "\n"
+                client_socket.sendall(json_message.encode('utf-8'))
+            except:
+                print("Connection lost. Waiting for new connection...")
+                client_socket.close()
+                client_socket, client_address = server_socket.accept()
+                print(f"New connection established with: {client_address}")
+            
+            # Display current detection in console
             conf_str = f"{confidence:.2f}"
-            print(f"| {direction_name}      | {conf_str}     | {timestamp}  |", end="\r", flush=True)
+            print(f"| {direction_name:<10} | {conf_str:<10} | {timestamp} |", end="\r", flush=True)
             
             # Update screen with direction
             screen.fill((0, 0, 0))
             font = pygame.font.Font(None, 36)
             text = font.render(f"Direction: {direction_name} ({conf_str})", True, (255, 255, 255))
+            info_text = font.render(f"Message #{counter} sent", True, (200, 200, 200))
             screen.blit(text, (50, 120))
+            screen.blit(info_text, (50, 170))
             pygame.display.flip()
             
             # Short sleep to avoid overwhelming the CPU
@@ -99,8 +140,16 @@ def main():
             
     except KeyboardInterrupt:
         print("\nDetection stream ended by user.")
+    except Exception as e:
+        print(f"Error: {e}")
     finally:
+        # Clean up
+        try:
+            client_socket.close()
+        except:
+            pass
+        server_socket.close()
         pygame.quit()
-
+        
 if __name__ == "__main__":
     main()
