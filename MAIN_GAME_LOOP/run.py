@@ -13,17 +13,24 @@
 import os
 import sys
 import argparse
+#import psutil
+import subprocess
+import threading
 
 # Set python search paths
-# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../graphics')))
-# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../DDC')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../graphics')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../DDC')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../embedded')))
+
+
+import ddr_gui
+import Camera_Loop_Thread
 
 # # Run DDC
 # import ddc_downloader
 # ddc_downloader.main()
 
 # # Run Game GUI
-# import ddr_gui
 # ddr_gui.DDRGame().run()
 # # game.run()
 
@@ -101,10 +108,15 @@ def main():
 
     # Start the game
     print("Starting DDR Game...")
-    try:
-        import ddr_gui
 
+    try:
+        #import ddr_gui
+        #import Camera_Loop_Thread
+        cam_thread = threading.Thread(target=Camera_Loop_Thread.main(), daemon=True)
+        cam_thread.start()
         ddr_gui.DDRGame().run()
+        cam_thread.join(timeout=1)
+
     except ImportError:
         print("Error: Could not import DDR GUI module. Make sure it's installed.")
         return
@@ -112,3 +124,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
