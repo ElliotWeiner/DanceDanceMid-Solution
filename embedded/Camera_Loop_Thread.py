@@ -9,6 +9,9 @@ import subprocess
 import os
 from collections import deque
 from PIL import Image
+import numpy as np
+import torch
+from torchvision import transforms
 
 
 #PLEASE CHANGE THIS TO YOUR FILE PATH IF ITS ALREADY SQUARED AWAY THEN DELETE
@@ -59,7 +62,8 @@ def grab_frame(rtsp_url: str) -> Image.Image:
 def camera_worker(camera_id: int, rtsp_url: str):
     frame_q = deque(maxlen=3)
     counter = 0
-
+    transform_test = transforms.Compose([transforms.Resize(size=(112, 112)),
+    transforms.Normalize((0.4316, 0.3945, 0.3765), (0.228, 0.2215, 0.2170))])
     while True:
         # 1) wait until all cameras are ready
         barrier.wait()
@@ -67,12 +71,18 @@ def camera_worker(camera_id: int, rtsp_url: str):
         # 2) grab frame
         try:
             img = grab_frame(rtsp_url)
+            arr = np.array(img)
+            crop = arr[:, 112:480-112, 224:704-224, :]
+            tensor = torch.from_numpy(crop)
+            tensor = tensor.permute(0, 3, 2, 1)
+            resized = transform_test(tensor)
+            resized = resized.permute(1, 0, 2, 3)
         except Exception as e:
             print(f"[Camera {camera_id}] Error grabbing frame: {e}")
             continue
 
         # 3) enqueue and save
-        frame_q.append(img)
+        frame_q.append(resized)
         fname = f"frame_{counter:06d}.jpg"
         img.save(os.path.join(OUTPUT_ROOT, f"cam_{camera_id}", fname))
         counter += 1
@@ -97,4 +107,5 @@ def main():
         print("\n[!] Interrupted—exiting.")
 
 if __name__ == "__main__":
+    
     main()
