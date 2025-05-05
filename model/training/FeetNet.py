@@ -139,6 +139,9 @@ class MultiViewCrossAttention(nn.Module):
         forward = self.fc1(self.flat(pooled))
         return forward
 
+
+
+
 class FeetNet(nn.Module):
     def __init__(self, num_views):
         super().__init__()
@@ -225,7 +228,7 @@ class FeetNet(nn.Module):
         #self.fcn1x1 = nn.Conv2d(256, 16, kernel_size=1)
         self.global_pool = nn.AdaptiveAvgPool2d((1, 1))		
             
-        self.fc1 = nn.Linear(25088, 16384)
+        self.fc1 = nn.Linear(50196, 16384)
         # self.fc1 = nn.Linear(50176, 20840)
         #self.fc2 = nn.Linear(1024, 1024)
         self.fc2 = nn.Linear(16384, 8192)
@@ -239,79 +242,25 @@ class FeetNet(nn.Module):
         
         self.dropout = nn.Dropout(0.3)
         
-        self.l_fc1 = nn.Linear(2048, 512)
-        self.l_fc2 = nn.Linear(512, 64)
-        self.l_fc3 = nn.Linear(64, 5)
-        
-        self.r_fc1 = nn.Linear(2048, 512)
-        self.r_fc2 = nn.Linear(512, 64)
-        self.r_fc3 = nn.Linear(64, 5)
         
 
       
 
-    def forward(self, v1):#, v3, v4):
-        
-        # pov1_maps = torch.reshape(self.pov1_r2p1d_conv(v1), (-1, 512, 16, 16))
-        # pov2_maps = torch.reshape(self.pov2_r2p1d_conv(v2), (-1, 512, 16, 16))
-        # pov3_maps = torch.reshape(self.pov3_r2p1d_conv(v3), (-1, 512, 16, 16))
-        # pov4_maps = torch.reshape(self.pov4_r2p1d_conv(v4), (-1, 512, 16, 16))
-        # pov1_maps = self.pool(torch.reshape(self.pov1_r2p1d_conv(v1), (-1, 256, 32, 32)))
-        # pov2_maps = self.pool(torch.reshape(self.pov2_r2p1d_conv(v2), (-1, 256, 32, 32)))
-        # pov3_maps = self.pool(torch.reshape(self.pov3_r2p1d_conv(v3), (-1, 256, 32, 32)))
-        # pov4_maps = self.pool(torch.reshape(self.pov4_r2p1d_conv(v4), (-1, 256, 32, 32)))
-        # print("before", v1.shape)
-        # v1 = v1.permute(0, 1, 4, 2, 3)
-        # v2 = v2.permute(0, 1, 4, 2, 3)
-        # print("after", v1.shape)
+    def forward(self, v1, v3):#, v3, v4):
+        # ADD BACK IN PESPECTIVE 2
 
 
         pov1_maps = self.backbone1_r2p1d_conv(v1)
-        #print(pov1_maps.shape)
-        #out = self.backbone_lin(pov1_maps.squeeze((2, 3, 4)))
-        #return out
-        #pov2_maps = self.backbone2_r2p1d_conv(v2)
-        # pov3_maps = self.pov3_r2p1d_conv(v3)
-        # pov4_maps = self.pov4_r2p1d_conv(v4)
-        #dims = pov1_maps.shape
-        #print(pov2_maps.shape)
-
-        #pov1_maps = torch.reshape((pov1_maps), (-1, dims[1], dims[3], dims[4]))
-        #pov2_maps = torch.reshape((pov2_maps), (-1, dims[1], dims[3], dims[4]))
+        pov1_maps = self.backbone2_r2p1d_conv(v3)
         
-        #povs = torch.stack((pov1_maps, pov2_maps))#, pov3_maps, pov4_maps]
-
-        #hw_dims = dims[3:]
-        #attention_out1, attention_out2 = self.multiview_cross_attention(pov1_maps, pov2_maps)
-    
-        #attention_out1 = self.multiview_cross_attention1(0, povs, hw_dims)
-        #attention_out2 = self.multiview_cross_attention2(1, povs, hw_dims)
-        # attention_out3 = self.multiview_cross_attention3(2, povs)
-        # attention_out4 = self.multiview_cross_attention4(3, povs)
-        
-        #combined = torch.stack((attention_out1, attention_out2))#, attention_out3, attention_out4))
-		
-        
-        #print(attention_out1.shape)
-        #print(combined.shape)
-        
-        #print(crunched.shape)
-        #meaned = torch.mean(combined, 0, True).squeeze(0)
-        #crunched1 = self.global_pool(meaned).squeeze((0, 2, 3))
-        #crunched1 = self.global_pool(meaned).squeeze((0, 2, 3))
-
-
-        #print(crunched.shape)
         p1 = self.flat(pov1_maps)#.squeeze(2)
-        #p2 = self.flat(pov2_maps)
-        #comb = torch.cat((p1, p2), dim=1)
-        
-        #comb = p1 + p2
-        
-        #print(meaned.shape)
+        p2 = self.flat(pov2_maps)
+
+        combined = np.concatenate([p1, p2])
+
         
         #print(meaned.shape)
-        x = self.activation(self.fc_bn1(self.fc1(p1)))
+        x = self.activation(self.fc_bn1(self.fc1(combined)))
         x = self.dropout(x)
         x = self.activation(self.fc_bn2(self.fc2(x)))
         x = self.dropout(x)
@@ -319,21 +268,8 @@ class FeetNet(nn.Module):
         x = self.dropout(x)
         x = self.activation(self.fc4(x))
         x = self.dropout(x)
-        x = self.activation(self.fc5(x))
+        x = self.fc5(x)
         
-        #x = self.activation(self.fc4(x))
-        
-        #x = self.fcn(meaned)
-        
-        #lx = self.activation(self.l_fc1(x))
-        #lx = self.activation(self.l_fc2(lx))
-        #lx = self.l_fc3(lx)
-        
-        #rx = self.activation(self.r_fc1(x))
-        #rx = self.activation(self.r_fc2(rx))
-        #rx = self.r_fc3(rx)
-        
-        #l_scores = F.softmax(lx, dim=-1)
-        #r_scores = F.softmax(rx, dim=-1)
+
         
         return x #lx, rx

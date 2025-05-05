@@ -215,6 +215,7 @@ class DDRDataset(torch.utils.data.Dataset):
         target = torch.zeros(5)
         target[self.actual_labels[index]] = 1.0
         
+        
         #plt.imshow(image2 * 255.0)
         #plt.show()
         # apply transformations if any
