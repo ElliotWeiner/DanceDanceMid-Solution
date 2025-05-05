@@ -115,12 +115,12 @@ class DDRDataset(torch.utils.data.Dataset):
             #load in npy
             # self.cam1_data.append(np.load(dataroot + "images1/" + name))
             self.cam2_data.append(np.load(dataroot + "images1/" + name))
-            self.cam2_data[-1][0, :, :, :] -= self.cam2_data[-1][1, :, :, :]
-            self.cam2_data[-1][1, :, :, :] -= self.cam2_data[-1][2, :, :, :]
+            #self.cam2_data[-1][0, :, :, :] -= self.cam2_data[-1][1, :, :, :]
+            #self.cam2_data[-1][1, :, :, :] -= self.cam2_data[-1][2, :, :, :]
             # self.cam3_data.append(np.load(dataroot + "images3/" + name))
             self.cam4_data.append(np.load(dataroot + "images2/" + name))
-            self.cam4_data[-1][0, :, :, :] -= self.cam4_data[-1][1, :, :, :]
-            self.cam4_data[-1][1, :, :, :] -= self.cam4_data[-1][2, :, :, :]
+            #self.cam4_data[-1][0, :, :, :] -= self.cam4_data[-1][1, :, :, :]
+            #self.cam4_data[-1][1, :, :, :] -= self.cam4_data[-1][2, :, :, :]
 
         print(len(self.labels_left), len(self.labels_right))#, len(self.cam2_data), len(self.cam4_data))
 
@@ -145,12 +145,12 @@ class DDRDataset(torch.utils.data.Dataset):
         #other_indices = random.sample(list(other_indices), 400)
 
         # Keep all other class indices
-        final_indices = np.concatenate([keep_indices, other_indices])
-        np.random.shuffle(final_indices)
-        self.labels_left_bal = l_targets[final_indices]#torch.utils.data.Subset(l_targets, final_indices)
-        self.labels_righ_bal = r_targets[final_indices]#torch.utils.data.Subset(r_targets, final_indices)
-        # self.cam2_data_bal = cam2[final_indices]
-        # self.cam4_data_bal = cam4[final_indices]
+        self.final_indices = np.concatenate([keep_indices, other_indices])
+        np.random.shuffle(self.final_indices)
+        self.labels_left_bal = l_targets[self.final_indices]#torch.utils.data.Subset(l_targets, final_indices)
+        self.labels_righ_bal = r_targets[self.final_indices]#torch.utils.data.Subset(r_targets, final_indices)
+        self.cam2_data_bal = cam2[self.final_indices]
+        self.cam4_data_bal = cam4[self.final_indices]
 
         # print("Left Before: ", len(self.labels_left))
         # print("Left After: ", self.labels_left_bal.shape)
@@ -195,9 +195,11 @@ class DDRDataset(torch.utils.data.Dataset):
         #print(test.shape)
         #plt.imshow(test)
         #plt.show()
-        image2 = torch.from_numpy(self.cam2_data[index]).float()
+        #data_index = self.final_indices[index]
+        
+        image2 = torch.from_numpy(self.cam2_data_bal[index]).float()
         # image3 = torch.from_numpy(self.cam3_data[index]).float()
-        image4 = torch.from_numpy(self.cam4_data[index]).float()
+        image4 = torch.from_numpy(self.cam4_data_bal[index]).float()
         #label_left = self.labels_left_bal[index]
         #label_right = self.labels_righ_bal[index]
         #image2 = image2[-1, :, :, :].squeeze(0)
