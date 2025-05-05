@@ -109,14 +109,18 @@ class DDRDataset(torch.utils.data.Dataset):
 
           # for each sample
           for i in range(cnt):
-            num = str(i).zfill(5)
+            num = str(i).zfill(4)
 
             name = file_name + "/" + file_name + "_" + num + ".npy"
             #load in npy
             # self.cam1_data.append(np.load(dataroot + "images1/" + name))
-            self.cam2_data.append(np.load(dataroot + "images2/" + name))
+            self.cam2_data.append(np.load(dataroot + "images1/" + name))
+            self.cam2_data[-1][0, :, :, :] -= self.cam2_data[-1][1, :, :, :]
+            self.cam2_data[-1][1, :, :, :] -= self.cam2_data[-1][2, :, :, :]
             # self.cam3_data.append(np.load(dataroot + "images3/" + name))
-            self.cam4_data.append(np.load(dataroot + "images4/" + name))
+            self.cam4_data.append(np.load(dataroot + "images2/" + name))
+            self.cam4_data[-1][0, :, :, :] -= self.cam4_data[-1][1, :, :, :]
+            self.cam4_data[-1][1, :, :, :] -= self.cam4_data[-1][2, :, :, :]
 
         print(len(self.labels_left), len(self.labels_right))#, len(self.cam2_data), len(self.cam4_data))
 
@@ -133,7 +137,7 @@ class DDRDataset(torch.utils.data.Dataset):
 
 
         #num_to_keep = int(len(class_indices))#* 0.75)
-        num_to_keep = 800
+        num_to_keep = 1750
         keep_indices = random.sample(list(class_indices), num_to_keep)
         #keep_indices = class_indices
 
@@ -157,9 +161,19 @@ class DDRDataset(torch.utils.data.Dataset):
 																																													#[0, 1, 2, 3, 4,  5,  6,  7,  8,  9,  10]
 		
         mapping = {(0, 0): 0, (0, 4): 0, (4, 0): 0, (1, 1): 1, (4, 1): 1, (1, 4): 1, (2, 2): 2, (2, 4): 2, (4, 2): 2, (3, 3): 3, (3, 4): 3, (4, 3): 3, (4, 4): 10, (0, 1): 4, (1, 0): 4, (0, 2): 5, (2, 0): 5, (0, 3): 6, (3, 0): 6, (2, 3): 7, (3, 2): 7, (1, 3): 8, (3, 1): 8, (1, 2): 9, (2, 1): 9}
+        
+        dist = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0}
         for l, r in zip(self.labels_left_bal, self.labels_righ_bal):
-            #if mapping[(l, r)] == 0 or mapping[(l, r)] == 1:
-            self.actual_labels.append(mapping[(l, r)])
+            if mapping[(l, r)] == 10:
+                self.actual_labels.append(4)
+                dist[4] += 1
+            elif mapping[(l, r)] < 4:
+                self.actual_labels.append(mapping[(l,r)])
+                dist[mapping[(l,r)]] += 1
+            else:
+                pass
+
+        print(dist)
 			
 
 
@@ -196,16 +210,23 @@ class DDRDataset(torch.utils.data.Dataset):
 
         #target_right = torch.zeros(5)
         #target_right[label_right] = 1.0
-        target = torch.zeros(11)
+        target = torch.zeros(5)
         target[self.actual_labels[index]] = 1.0
         
         #plt.imshow(image2 * 255.0)
         #plt.show()
         # apply transformations if any
         #image2 = image2.permute(2, 0, 1)
-        image2 = image2.permute(0, 3, 1, 2)
+
+        #cthw
+        #thwc
+        
+        #image2 = image2.permute(0, 3, 1, 2)
         #image4 = image4.permute(2, 0, 1)
-        image4 = image4.permute(0, 3, 1, 2)
+        #image4 = image4.permute(0, 3, 1, 2)
+
+        image2 = image2.permute(1, 0, 2, 3)
+        image4 = image4.permute(1, 0, 2, 3)
         
         
 
@@ -244,14 +265,14 @@ def getloaders(MAX, batch_size=8):
 
     # define transforms
     transform = transforms.Compose([
-        transforms.Resize(size=(112, 112)),
+        #transforms.Resize(size=(112, 112)),
         #transforms.ColorJitter(0.1, 0.1, 0.1, 0.1),
         transforms.Normalize((0.4316, 0.3945, 0.3765), (0.228, 0.2215, 0.2170)),
-        transforms.RandomRotation(degrees=20)
+        transforms.RandomRotation(degrees=10)
     ])
     
     transform_test = transforms.Compose([
-        transforms.Resize(size=(112, 112)),
+        #transforms.Resize(size=(112, 112)),
         transforms.Normalize((0.4316, 0.3945, 0.3765), (0.228, 0.2215, 0.2170))
     ])
 
@@ -276,10 +297,10 @@ def getloaders(MAX, batch_size=8):
     test_sampler = torch.utils.data.RandomSampler(test_dataset)
 
 
-    trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler,
-                                            shuffle=False, num_workers=1)
-    testloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, sampler=test_sampler,
-                                            shuffle=False, num_workers=1)
+    trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size,
+                                            shuffle=True, num_workers=2)
+    testloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size,
+                                            shuffle=True, num_workers=2)
     
     return trainloader, testloader, dataset, train_dataset, test_dataset
     

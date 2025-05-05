@@ -151,6 +151,10 @@ class FeetNet(nn.Module):
         self.backbone_lin = nn.Linear(512, 11, bias=True)
         self.backbone1_r2p1d_conv = nn.Sequential(*list(models.video.r2plus1d_18(pretrained=True, progress=True).children())[:-2])
         self.backbone2_r2p1d_conv = nn.Sequential(*list(models.video.r2plus1d_18(pretrained=True, progress=True).children())[:-2])
+        # for params in self.backbone1_r2p1d_conv.parameters():
+        #     params.requires_grad = False
+        # for params in self.backbone2_r2p1d_conv.parameters():
+        #     params.requires_grad = False
         #self.backbone1_r2p1d_conv = nn.Sequential(*list(models.video.r2plus1d_18(pretrained=True, progress=True).children())[:-3])
         #self.backbone2_r2p1d_conv = nn.Sequential(*list(models.video.r2plus1d_18(pretrained=True, progress=True).children())[:-3])
         # self.pov3_r2p1d_conv = nn.Sequential(*list(models.video.r2plus1d_18(pretrained=True, progress=True).children())[:-3])
@@ -197,7 +201,7 @@ class FeetNet(nn.Module):
         self.activation = nn.ReLU()
 
         
-        # self.fcn = nn.Sequential(nn.Linear(204800, 8192),
+        #self.fcn = nn.Sequential(nn.Linear(50176, 8192),
             # nn.ReLU(),
             # nn.Dropout(),
             # nn.Linear(8192, 4096),
@@ -221,19 +225,19 @@ class FeetNet(nn.Module):
         #self.fcn1x1 = nn.Conv2d(256, 16, kernel_size=1)
         self.global_pool = nn.AdaptiveAvgPool2d((1, 1))		
             
-        #self.fc1 = nn.Linear(256, 4096)
-        self.fc1 = nn.Linear(50176, 20840)
+        self.fc1 = nn.Linear(25088, 16384)
+        # self.fc1 = nn.Linear(50176, 20840)
         #self.fc2 = nn.Linear(1024, 1024)
-        self.fc2 = nn.Linear(20840, 8192)
+        self.fc2 = nn.Linear(16384, 8192)
         #self.fc3 = nn.Linear(1024, 512)
         self.fc3 = nn.Linear(8192, 2048)
         self.fc4 = nn.Linear(2048, 512)
-        self.fc5 = nn.Linear(512, 11)
+        self.fc5 = nn.Linear(512, 5)
         
-        self.fc_bn1 = nn.LayerNorm(20840)
+        self.fc_bn1 = nn.LayerNorm(16384)
         self.fc_bn2 = nn.LayerNorm(8192)
         
-        self.dropout = nn.Dropout(0.1)
+        self.dropout = nn.Dropout(0.3)
         
         self.l_fc1 = nn.Linear(2048, 512)
         self.l_fc2 = nn.Linear(512, 64)
@@ -246,7 +250,7 @@ class FeetNet(nn.Module):
 
       
 
-    def forward(self, v1, v2):#, v3, v4):
+    def forward(self, v1):#, v3, v4):
         
         # pov1_maps = torch.reshape(self.pov1_r2p1d_conv(v1), (-1, 512, 16, 16))
         # pov2_maps = torch.reshape(self.pov2_r2p1d_conv(v2), (-1, 512, 16, 16))
@@ -266,7 +270,7 @@ class FeetNet(nn.Module):
         #print(pov1_maps.shape)
         #out = self.backbone_lin(pov1_maps.squeeze((2, 3, 4)))
         #return out
-        pov2_maps = self.backbone2_r2p1d_conv(v2)
+        #pov2_maps = self.backbone2_r2p1d_conv(v2)
         # pov3_maps = self.pov3_r2p1d_conv(v3)
         # pov4_maps = self.pov4_r2p1d_conv(v4)
         #dims = pov1_maps.shape
@@ -299,15 +303,15 @@ class FeetNet(nn.Module):
 
         #print(crunched.shape)
         p1 = self.flat(pov1_maps)#.squeeze(2)
-        p2 = self.flat(pov2_maps)
-        comb = torch.cat((p1, p2), dim=1)
+        #p2 = self.flat(pov2_maps)
+        #comb = torch.cat((p1, p2), dim=1)
         
         #comb = p1 + p2
         
         #print(meaned.shape)
         
         #print(meaned.shape)
-        x = self.activation(self.fc_bn1(self.fc1(comb)))
+        x = self.activation(self.fc_bn1(self.fc1(p1)))
         x = self.dropout(x)
         x = self.activation(self.fc_bn2(self.fc2(x)))
         x = self.dropout(x)

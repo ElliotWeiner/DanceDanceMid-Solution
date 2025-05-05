@@ -55,6 +55,9 @@ def calculate_accuracy(model, testloader, device=None):
             _, pr = torch.max(batch_out.data, 1)
             _, gt = torch.max(batch_gt.data, 1)
             
+            pr = (pr == 10).long()
+            gt = (gt == 10).long()
+            
             print("pr, gt")
             print(pr)
             print(gt)
@@ -91,7 +94,7 @@ def calculate_accuracy(model, testloader, device=None):
 
 
 
-def train_the_feet(save_path, lr, num_povs, MAX):
+def train_the_feet(save_path, all_data, lr, num_povs):
     """
     Function for training the network. You can make changes (e.g., add validation dataloader, change batch_size and #of epoch) accordingly.
     """
@@ -109,7 +112,7 @@ def train_the_feet(save_path, lr, num_povs, MAX):
     #scheduler = lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=0.01, total_iters=500)
     scheduler = lr_scheduler.CyclicLR(optimizer, base_lr=lr, max_lr=100*lr)
     #criterion = torch.ops.sigmoid_focal_loss(
-    loss_weights = torch.tensor([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.3]).to("cuda")
+    loss_weights = torch.tensor([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]).to(device)
     criterion1 = torch.nn.CrossEntropyLoss(weight=loss_weights)
     criterion2 = torch.nn.CrossEntropyLoss(weight=loss_weights)
 
@@ -117,7 +120,6 @@ def train_the_feet(save_path, lr, num_povs, MAX):
     batch_size = 32
     start_time = time.time()
 
-    all_data = getloaders(MAX, batch_size)
     train_loader = all_data[0]
     test_loader = all_data[1]
 
@@ -309,7 +311,7 @@ def train_the_feet(save_path, lr, num_povs, MAX):
             
             
             
-        if last_loss <= 0.02:# or (last_ll <= 0.02 and last_lr <= 0.02):
+        if last_loss <= 0.00000000001:# or (last_ll <= 0.02 and last_lr <= 0.02):
             #test_accuracy_l, test_accuracy_r = calculate_accuracy(feet_net, test_loader, device)
             #acc_l.append(test_accuracy_l)
             #acc_r.append(test_accuracy_r)
