@@ -5,21 +5,11 @@ import threading
 import io
 import subprocess
 import os
-<<<<<<< HEAD
-import socket
-import json
-=======
->>>>>>> parent of 66db6a8 (Added socket code. V1 not sure if works)
 from collections import deque
 from PIL import Image
 import numpy as np
 import torch
 from torchvision import transforms
-<<<<<<< HEAD
-import time
-=======
-
->>>>>>> parent of 66db6a8 (Added socket code. V1 not sure if works)
 
 # PLEASE CHANGE THIS TO YOUR FILE PATH IF ITS ALREADY SQUARED AWAY THEN DELETE
 ffmpeg_dir = r"C:\Users\hummy\Downloads\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\bin"
@@ -43,83 +33,6 @@ for cam_id in cameras:
 barrier = threading.Barrier(len(cameras))
 
 
-<<<<<<< HEAD
-# Direction mapping
-def get_direction_name(direction_code):
-    """Convert direction code to human-readable name"""
-    directions = {0: "UP", 1: "DOWN", 2: "LEFT", 3: "RIGHT", 4: "NONE"}
-    return directions.get(direction_code, "UNKNOWN")
-
-
-# Initialize socket server
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-host = "localhost"
-port = 12345
-client_socket = None
-message_counter = 0
-
-
-# Start socket server in a separate thread
-def socket_server():
-    global client_socket
-    try:
-        # Bind socket to address and port
-        server_socket.bind((host, port))
-        # Listen for incoming connections
-        server_socket.listen(1)
-        print(f"Publisher listening on {host}:{port}")
-
-        while True:
-            # Accept a connection
-            client_socket_local, client_address = server_socket.accept()
-            client_socket = client_socket_local
-            print(f"Connection established with: {client_address}")
-
-            # Keep the connection open until client disconnects
-            while True:
-                # This just keeps the thread alive
-                time.sleep(1)
-    except Exception as e:
-        print(f"Socket server error: {e}")
-    finally:
-        if client_socket:
-            client_socket.close()
-        server_socket.close()
-
-
-# Function to send direction via socket
-def send_direction(direction_code):
-    global client_socket, message_counter
-
-    if client_socket is None:
-        return
-
-    message_counter += 1
-    direction_name = get_direction_name(direction_code)
-    timestamp = time.strftime("%H:%M:%S.%f")[:-3]
-
-    # Create JSON message to send
-    message = {
-        "counter": message_counter,
-        "direction_code": direction_code,
-        "direction": direction_name,
-        "timestamp": timestamp,
-        "message": f"{direction_name}",
-    }
-
-    # Send message to client
-    try:
-        json_message = json.dumps(message) + "\n"
-        client_socket.sendall(json_message.encode("utf-8"))
-        print(f"Sent direction: {direction_name} at {timestamp}")
-    except:
-        global client_socket  # This line was causing the syntax error
-        print("Connection lost. Waiting for new connection...")
-        client_socket = None  # This resets the client_socket to None
-
-
-=======
->>>>>>> parent of 66db6a8 (Added socket code. V1 not sure if works)
 def model_inference(camera_id: int, frames: list[Image.Image]):
     """
     frames: [oldest, middle, newest] for this camera
