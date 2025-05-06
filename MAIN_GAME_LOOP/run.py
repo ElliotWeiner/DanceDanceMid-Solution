@@ -113,11 +113,11 @@ def main():
 
     try:
         ddr_gui.DDRGame().run()
-        #import Camera_Loop_Thread
-        #cam_thread = threading.Thread(target=Camera_Loop_Thread.main(), daemon=True)
-        #cam_thread.start()
-        
-        #cam_thread.join(timeout=1)
+        # import Camera_Loop_Thread
+        # cam_thread = threading.Thread(target=Camera_Loop_Thread.main(), daemon=True)
+        # cam_thread.start()
+
+        # cam_thread.join(timeout=1)
 
     except ImportError:
         print("Error: Could not import DDR GUI module. Make sure it's installed.")

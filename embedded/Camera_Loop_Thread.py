@@ -1,10 +1,11 @@
-#This is the threaded camera recording file. You need to have ffmpeg installed
-#Note: This file will save all the .mp4 files whereever the python file is stored.
+# This is the threaded camera recording file. You need to have ffmpeg installed
+# Note: This file will save all the .mp4 files whereever the python file is stored.
 
-#If CONDA look up online if PIP install its: pip install thread6
+# If CONDA look up online if PIP install its: pip install thread6
 import threading
 import io
-#Already built into python no need to download
+
+# Already built into python no need to download
 import subprocess
 import os
 from collections import deque
@@ -14,17 +15,17 @@ import torch
 from torchvision import transforms
 
 
-#PLEASE CHANGE THIS TO YOUR FILE PATH IF ITS ALREADY SQUARED AWAY THEN DELETE
+# PLEASE CHANGE THIS TO YOUR FILE PATH IF ITS ALREADY SQUARED AWAY THEN DELETE
 ffmpeg_dir = r"C:\Users\hummy\Downloads\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\bin"
 os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
 
 
-#Remember to comment out the two cameras that are not in use
+# Remember to comment out the two cameras that are not in use
 cameras = {
-    #1: 'rtsp://root:botbot@192.168.0.116/axis-media/media.amp',
-    2: 'rtsp://root:botbot@192.168.0.115/axis-media/media.amp',
-    3: 'rtsp://root:botbot@192.168.0.135/axis-media/media.amp',
-    #4: 'rtsp://root:botbot@192.168.0.130/axis-media/media.amp',
+    # 1: 'rtsp://root:botbot@192.168.0.116/axis-media/media.amp',
+    2: "rtsp://root:botbot@192.168.0.115/axis-media/media.amp",
+    3: "rtsp://root:botbot@192.168.0.135/axis-media/media.amp",
+    # 4: 'rtsp://root:botbot@192.168.0.130/axis-media/media.amp',
 }
 OUTPUT_ROOT = "Model Frames"
 
@@ -34,6 +35,7 @@ for cam_id in cameras:
 
 # Barrier to sync the 4 threads before they grab their frame
 barrier = threading.Barrier(len(cameras))
+
 
 def model_inference(camera_id: int, frames: list[Image.Image]):
     """
@@ -50,29 +52,39 @@ def model_inference(camera_id: int, frames: list[Image.Image]):
 
     # return pred.detach.cpu().int()
 
-def grab_frame(rtsp_url: str) -> Image.Image:
 
+def grab_frame(rtsp_url: str) -> Image.Image:
     """
     Uses FFmpeg to grab one frame from the RTSP stream
     """
     cmd = [
         "ffmpeg",
-        "-rtsp_transport", "tcp",
-        "-i", rtsp_url,
-        "-frames:v", "1",
-        "-f", "image2pipe",
-        "-vcodec", "mjpeg",
-        "-"
+        "-rtsp_transport",
+        "tcp",
+        "-i",
+        rtsp_url,
+        "-frames:v",
+        "1",
+        "-f",
+        "image2pipe",
+        "-vcodec",
+        "mjpeg",
+        "-",
     ]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     jpeg_bytes, _ = proc.communicate()
     return Image.open(io.BytesIO(jpeg_bytes))
 
+
 def camera_worker(camera_id: int, rtsp_url: str):
     frame_q = deque(maxlen=3)
     counter = 0
-    transform_test = transforms.Compose([transforms.Resize(size=(112, 112)),
-    transforms.Normalize((0.4316, 0.3945, 0.3765), (0.228, 0.2215, 0.2170))])
+    transform_test = transforms.Compose(
+        [
+            transforms.Resize(size=(112, 112)),
+            transforms.Normalize((0.4316, 0.3945, 0.3765), (0.228, 0.2215, 0.2170)),
+        ]
+    )
     while True:
         # 1) wait until all cameras are ready
         barrier.wait()
@@ -81,7 +93,7 @@ def camera_worker(camera_id: int, rtsp_url: str):
         try:
             img = grab_frame(rtsp_url)
             arr = np.array(img)
-            crop = arr[:, 112:480-112, 224:704-224, :]
+            crop = arr[:, 112 : 480 - 112, 224 : 704 - 224, :]
             tensor = torch.from_numpy(crop)
             tensor = tensor.permute(0, 3, 2, 1)
             resized = transform_test(tensor)
@@ -101,6 +113,7 @@ def camera_worker(camera_id: int, rtsp_url: str):
         if len(frame_q) == 3:
             model_inference(camera_id, list(frame_q))
 
+
 def main():
     threads = []
     for cam_id, url in cameras.items():
@@ -116,6 +129,7 @@ def main():
     except KeyboardInterrupt:
         print("\n[!] Interrupted—exiting.")
 
+
 if __name__ == "__main__":
-    
+
     main()
