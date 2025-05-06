@@ -13,14 +13,15 @@
 import os
 import sys
 import argparse
-#import psutil
+
+# import psutil
 import subprocess
 import threading
 
 # Set python search paths
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../graphics')))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../DDC')))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../embedded')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../graphics")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../DDC")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../embedded")))
 
 
 import ddr_gui
@@ -110,8 +111,8 @@ def main():
     print("Starting DDR Game...")
 
     try:
-        #import ddr_gui
-        #import Camera_Loop_Thread
+        # import ddr_gui
+        # import Camera_Loop_Thread
         cam_thread = threading.Thread(target=Camera_Loop_Thread.main(), daemon=True)
         cam_thread.start()
         ddr_gui.DDRGame().run()
@@ -124,4 +125,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
