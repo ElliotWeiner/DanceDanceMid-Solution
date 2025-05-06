@@ -8,17 +8,18 @@ import io
 # Already built into python no need to download
 import subprocess
 import os
+import json
 from collections import deque
 from PIL import Image
 import numpy as np
 import torch
 from torchvision import transforms
 
+import time
 
 # PLEASE CHANGE THIS TO YOUR FILE PATH IF ITS ALREADY SQUARED AWAY THEN DELETE
 ffmpeg_dir = r"C:\Users\hummy\Downloads\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\bin"
 os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
-
 
 # Remember to comment out the two cameras that are not in use
 cameras = {
@@ -33,32 +34,103 @@ OUTPUT_ROOT = "Model Frames"
 for cam_id in cameras:
     os.makedirs(os.path.join(OUTPUT_ROOT, f"cam_{cam_id}"), exist_ok=True)
 
-# Barrier to sync the 4 threads before they grab their frame
+# Barrier to sync the threads before they grab their frame
 barrier = threading.Barrier(len(cameras))
+
+
+# Direction mapping
+def get_direction_name(direction_code):
+    """Convert direction code to human-readable name"""
+    directions = {0: "UP", 1: "DOWN", 2: "LEFT", 3: "RIGHT", 4: "NONE"}
+    return directions.get(direction_code, "UNKNOWN")
+
+
+# Initialize socket server
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+host = "localhost"
+port = 12345
+client_socket = None
+message_counter = 0
+
+
+# Start socket server in a separate thread
+def socket_server():
+    global client_socket
+    try:
+        # Bind socket to address and port
+        server_socket.bind((host, port))
+        # Listen for incoming connections
+        server_socket.listen(1)
+        print(f"Publisher listening on {host}:{port}")
+
+        while True:
+            # Accept a connection
+            client_socket_local, client_address = server_socket.accept()
+            client_socket = client_socket_local
+            print(f"Connection established with: {client_address}")
+
+            # Keep the connection open until client disconnects
+            while True:
+                # This just keeps the thread alive
+                time.sleep(1)
+    except Exception as e:
+        print(f"Socket server error: {e}")
+    finally:
+        if client_socket:
+            client_socket.close()
+        server_socket.close()
+
+
+# Function to send direction via socket
+def send_direction(direction_code):
+    global client_socket, message_counter
+
+    if client_socket is None:
+        return
+
+    message_counter += 1
+    direction_name = get_direction_name(direction_code)
+    timestamp = time.strftime("%H:%M:%S.%f")[:-3]
+
+    # Create JSON message to send
+    message = {
+        "counter": message_counter,
+        "direction_code": direction_code,
+        "direction": direction_name,
+        "timestamp": timestamp,
+        "message": f"{direction_name}",
+    }
+
+    # Send message to client
+    try:
+        json_message = json.dumps(message) + "\n"
+        client_socket.sendall(json_message.encode("utf-8"))
+        print(f"Sent direction: {direction_name} at {timestamp}")
+    except:
+        print("Connection lost. Waiting for new connection...")
+        global client_socket
+        client_socket = None
 
 
 def model_inference(camera_id: int, frames: list[Image.Image]):
     """
     frames: [oldest, middle, newest] for this camera
+
+    Returns:
+    - 0: up
+    - 1: down
+    - 2: left
+    - 3: right
+    - 4: no input
     """
+    # This is a placeholder. Replace with actual model inference
+    # For now, returning 0 as in the original code
+    direction_code = 0
 
-    # Returns:
-    # - 0: up
-    # - 1: down
-    # - 2: left
-    # - 3: right
-    # - 4: no input
+    # Send the direction via socket
+    send_direction(direction_code)
 
-    return 0
-
-    # print(f"[Camera {camera_id}] model_inference on {len(frames)} frames")
-
-    # logits = model(frames[camera_pov1], frames[camera_pov2])
-
-    # probs = F.softmax(logits, dim=1)
-    # _, pred = torch.argmax(probs, dim=1)
-
-    # return pred.detach.cpu().int()
+    return direction_code
 
 
 def grab_frame(rtsp_url: str) -> Image.Image:
@@ -123,11 +195,16 @@ def camera_worker(camera_id: int, rtsp_url: str):
 
 
 def main():
-    threads = []
+    # Start socket server thread
+    socket_thread = threading.Thread(target=socket_server, daemon=True)
+    socket_thread.start()
+
+    # Start camera threads
+    camera_threads = []
     for cam_id, url in cameras.items():
         t = threading.Thread(target=camera_worker, args=(cam_id, url), daemon=True)
         t.start()
-        threads.append(t)
+        camera_threads.append(t)
 
     print("[+] All camera threads started. Press Ctrl+C to stop.")
     try:
@@ -136,8 +213,10 @@ def main():
             threading.Event().wait(1)
     except KeyboardInterrupt:
         print("\n[!] Interrupted—exiting.")
+    finally:
+        # Clean up socket
+        server_socket.close()
 
 
 if __name__ == "__main__":
-
     main()
