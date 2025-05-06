@@ -1,11 +1,8 @@
 # This is the threaded camera recording file. You need to have ffmpeg installed
 # Note: This file will save all the .mp4 files whereever the python file is stored.
 
-# If CONDA look up online if PIP install its: pip install thread6
 import threading
 import io
-
-# Already built into python no need to download
 import subprocess
 import os
 import socket
@@ -107,9 +104,9 @@ def send_direction(direction_code):
         client_socket.sendall(json_message.encode("utf-8"))
         print(f"Sent direction: {direction_name} at {timestamp}")
     except:
+        global client_socket  # This line was causing the syntax error
         print("Connection lost. Waiting for new connection...")
-        global client_socket
-        client_socket = None
+        client_socket = None  # This resets the client_socket to None
 
 
 def model_inference(camera_id: int, frames: list[Image.Image]):
