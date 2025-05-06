@@ -1,9 +1,14 @@
+import random
+import time
+import pygame
+import sys
+import socket
+import json
+import threading
 import os
 import re
-import pygame
 import numpy
 import math
-import sys
 
 from dataclasses import dataclass
 from typing import List, Dict, Tuple, Optional
@@ -56,6 +61,13 @@ class DDRGame:
     def __init__(self):
         # Initialize pygame after setup
         self.pygame_initialized = False
+
+        # Initialize socket listener for keyboard inputs
+        self.socket_thread = None
+        self.socket_running = False
+        self.socket_inputs = []
+        self.socket_lock = threading.Lock()
+
         self.initialize_pygame()
         self.setup_game()
 
@@ -82,7 +94,7 @@ class DDRGame:
         self.receptor_images = []
 
         # Create arrow surfaces
-        for color in [BLUE, WHITE, GREEN, RED]:  # Left, Up, Down, Right
+        for color in [BLUE, RED, GREEN, YELLOW]:  # Left, Down, Up, Right
             # Regular arrow
             arrow_surface = pygame.Surface((ARROW_SIZE, ARROW_SIZE), pygame.SRCALPHA)
             pygame.draw.polygon(
@@ -178,6 +190,147 @@ class DDRGame:
         self.key_states = [False, False, False, False]  # Left, Down, Up, Right
         self.file_selector_state = {}
         self.message = ""
+
+        # Start socket listener if not running
+        self.start_socket_listener()
+
+    def start_socket_listener(self):
+        """Start the socket listener thread"""
+        if self.socket_thread is None or not self.socket_thread.is_alive():
+            self.socket_running = True
+            self.socket_thread = threading.Thread(target=self.socket_listener_thread)
+            self.socket_thread.daemon = (
+                True  # Thread will close when main program exits
+            )
+            self.socket_thread.start()
+            print("Socket listener thread started")
+
+    def stop_socket_listener(self):
+        """Stop the socket listener thread"""
+        self.socket_running = False
+        if self.socket_thread and self.socket_thread.is_alive():
+            self.socket_thread.join(timeout=1.0)
+            print("Socket listener thread stopped")
+
+    def socket_listener_thread(self):
+        """Thread function to listen for socket messages"""
+        # Create a socket object
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # Define host and port to connect to
+        host = "localhost"
+        port = 12345
+
+        try:
+            # Connect to the publisher
+            print(f"Trying to connect to keyboard publisher at {host}:{port}...")
+            client_socket.connect((host, port))
+            print("Connected to keyboard publisher!")
+
+            # Buffer for incomplete data
+            buffer = ""
+
+            # Receive and process data
+            while self.socket_running:
+                try:
+                    # Receive data with a timeout to allow checking if thread should exit
+                    client_socket.settimeout(0.1)
+                    data = client_socket.recv(1024).decode("utf-8")
+
+                    # If no data, connection was closed
+                    if not data:
+                        print("Connection closed by publisher")
+                        break
+
+                    # Add received data to buffer
+                    buffer += data
+
+                    # Process complete messages (delimited by newlines)
+                    while "\n" in buffer:
+                        # Split at first newline
+                        message, buffer = buffer.split("\n", 1)
+                        try:
+                            # Parse JSON message
+                            parsed_data = json.loads(message)
+
+                            # Print for debugging
+                            print(
+                                f"Received #{parsed_data['counter']}: {parsed_data['message']}"
+                            )
+
+                            # Process the direction input
+                            self.process_socket_input(parsed_data)
+
+                        except json.JSONDecodeError:
+                            print(f"Failed to parse message: {message}")
+
+                except socket.timeout:
+                    # Timeout is expected, just continue the loop
+                    pass
+                except Exception as e:
+                    print(f"Socket error: {e}")
+                    break
+
+        except Exception as e:
+            print(f"Socket connection error: {e}")
+        finally:
+            # Close the socket
+            client_socket.close()
+            print("Socket listener shutdown")
+
+            # Try to reconnect after a delay
+            if self.socket_running:
+                time.sleep(2.0)
+                # Restart the thread if we're still supposed to be running
+                if self.socket_running:
+                    print("Attempting to reconnect socket...")
+                    threading.Thread(target=self.socket_listener_thread).start()
+
+    def process_socket_input(self, data):
+        """Process input data received from socket"""
+        # Map direction codes to our key handling
+        direction_code = data.get("direction_code", -1)
+        confidence = data.get("confidence", 0.0)
+
+        # Only process strong confidence signals
+        if confidence < 0.5:
+            return
+
+        # Store the input for processing in the main thread
+        with self.socket_lock:
+            self.socket_inputs.append(direction_code)
+
+    def handle_socket_inputs(self):
+        """Process any pending socket inputs in the main thread"""
+        with self.socket_lock:
+            # Get all inputs and clear the queue
+            inputs = self.socket_inputs.copy()
+            self.socket_inputs.clear()
+
+        # Process each input
+        for direction_code in inputs:
+            # Update key states based on direction code
+            # Note: Direction codes from the publisher are:
+            # 0: UP, 1: DOWN, 2: LEFT, 3: RIGHT, 4: NONE
+            # But our game uses:
+            # 0: LEFT, 1: DOWN, 2: UP, 3: RIGHT
+
+            # Reset all keys if NONE was received
+            if direction_code == 4:
+                self.key_states = [False, False, False, False]
+            else:
+                # Map the publisher's direction codes to our game's direction indices
+                game_direction = {
+                    0: 2,  # UP -> UP
+                    1: 1,  # DOWN -> DOWN
+                    2: 0,  # LEFT -> LEFT
+                    3: 3,  # RIGHT -> RIGHT
+                }.get(direction_code, -1)
+
+                if game_direction >= 0:
+                    # Set this key to pressed and check for note hit
+                    self.key_states = [False, False, False, False]  # Reset all keys
+                    self.key_states[game_direction] = True
+                    self.check_note_hit(game_direction)
 
     def select_sm_file(self):
         """Show a pygame-based file selector for .sm files"""
@@ -470,8 +623,13 @@ class DDRGame:
 
     def handle_events(self):
         """Process game events"""
+        # First handle any socket inputs
+        self.handle_socket_inputs()
+
+        # Then handle pygame events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                self.stop_socket_listener()  # Stop the listener thread
                 return False
 
             if self.game_state == "menu":
@@ -480,13 +638,11 @@ class DDRGame:
                     if event.key == pygame.K_SPACE:
                         self.select_sm_file()
                     elif event.key == pygame.K_ESCAPE:
+                        self.stop_socket_listener()  # Stop the listener thread
                         return False
 
             elif self.game_state == "file_selector":
-                # Process file selector events directly here
-                if event.type == pygame.QUIT:
-                    return False
-
+                # Process file selector events
                 if event.type == pygame.KEYDOWN:
                     print(f"File selector key pressed: {event.key}")  # Debug print
 
@@ -568,11 +724,11 @@ class DDRGame:
                         self.key_states[0] = True
                         self.check_note_hit(0)
                     elif event.key == pygame.K_DOWN:
-                        self.key_states[2] = True
-                        self.check_note_hit(2)
-                    elif event.key == pygame.K_UP:
                         self.key_states[1] = True
                         self.check_note_hit(1)
+                    elif event.key == pygame.K_UP:
+                        self.key_states[2] = True
+                        self.check_note_hit(2)
                     elif event.key == pygame.K_RIGHT:
                         self.key_states[3] = True
                         self.check_note_hit(3)
@@ -581,9 +737,9 @@ class DDRGame:
                     if event.key == pygame.K_LEFT:
                         self.key_states[0] = False
                     elif event.key == pygame.K_DOWN:
-                        self.key_states[2] = False
-                    elif event.key == pygame.K_UP:
                         self.key_states[1] = False
+                    elif event.key == pygame.K_UP:
+                        self.key_states[2] = False
                     elif event.key == pygame.K_RIGHT:
                         self.key_states[3] = False
 
@@ -679,6 +835,7 @@ class DDRGame:
                         self.miss_sound.play()
 
                 # Calculate positions for all notes
+                # Calculate positions for all notes
                 for note in self.sm_data.notes:
                     note_time = self.beat_time_to_seconds(note.beat_time)
                     time_diff = note_time - self.song_time
@@ -708,6 +865,20 @@ class DDRGame:
         )
         exit_text = self.font.render("Press ESC to exit", True, WHITE)
 
+        # Add socket connection status
+        if (
+            hasattr(self, "socket_thread")
+            and self.socket_thread
+            and self.socket_thread.is_alive()
+        ):
+            connection_text = self.small_font.render(
+                "Socket connected - Receiving keyboard inputs", True, GREEN
+            )
+        else:
+            connection_text = self.small_font.render(
+                "Socket not connected - Waiting for keyboard publisher", True, RED
+            )
+
         self.screen.blit(
             title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 200)
         )
@@ -717,6 +888,9 @@ class DDRGame:
         )
         self.screen.blit(
             exit_text, (SCREEN_WIDTH // 2 - exit_text.get_width() // 2, 300)
+        )
+        self.screen.blit(
+            connection_text, (SCREEN_WIDTH // 2 - connection_text.get_width() // 2, 350)
         )
 
     def draw_game(self):
@@ -780,6 +954,12 @@ class DDRGame:
 
         self.screen.blit(score_text, (20, 20))
         self.screen.blit(combo_text, (20, 50))
+
+        # Draw input source indicator
+        input_text = self.small_font.render(
+            "Remote Keyboard Input: ACTIVE", True, GREEN
+        )
+        self.screen.blit(input_text, (SCREEN_WIDTH - input_text.get_width() - 20, 50))
 
         # Draw song info
         if self.sm_data:
@@ -872,6 +1052,24 @@ class DDRGame:
             down_text = self.font.render("▼", True, WHITE)
             self.screen.blit(down_text, (SCREEN_WIDTH // 2, 500))
 
+        # Draw socket connection status
+        if (
+            hasattr(self, "socket_thread")
+            and self.socket_thread
+            and self.socket_thread.is_alive()
+        ):
+            connection_text = self.small_font.render(
+                "Socket connected - Receiving keyboard inputs", True, GREEN
+            )
+        else:
+            connection_text = self.small_font.render(
+                "Socket not connected - Waiting for keyboard publisher", True, RED
+            )
+
+        self.screen.blit(
+            connection_text, (SCREEN_WIDTH // 2 - connection_text.get_width() // 2, 550)
+        )
+
     def draw_message(self):
         """Draw a message screen"""
         self.screen.fill(BLACK)
@@ -917,6 +1115,8 @@ class DDRGame:
             self.update(dt)
             self.draw()
 
+        # Make sure to stop the socket listener when exiting
+        self.stop_socket_listener()
         pygame.quit()
 
 
