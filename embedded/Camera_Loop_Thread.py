@@ -8,13 +8,13 @@ import io
 # Already built into python no need to download
 import subprocess
 import os
+import socket
 import json
 from collections import deque
 from PIL import Image
 import numpy as np
 import torch
 from torchvision import transforms
-
 import time
 
 # PLEASE CHANGE THIS TO YOUR FILE PATH IF ITS ALREADY SQUARED AWAY THEN DELETE
