@@ -94,7 +94,7 @@ class DDRGame:
         self.receptor_images = []
 
         # Create arrow surfaces
-        for color in [BLUE, RED, GREEN, YELLOW]:  # Left, Down, Up, Right
+        for color in [BLUE, WHITE, GREEN, RED]:  # Left, Down, Up, Right
             # Regular arrow
             arrow_surface = pygame.Surface((ARROW_SIZE, ARROW_SIZE), pygame.SRCALPHA)
             pygame.draw.polygon(
