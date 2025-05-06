@@ -39,7 +39,16 @@ def model_inference(camera_id: int, frames: list[Image.Image]):
     """
     frames: [oldest, middle, newest] for this camera
     """
-    print(f"[Camera {camera_id}] model_inference on {len(frames)} frames")
+    return 0
+
+    # print(f"[Camera {camera_id}] model_inference on {len(frames)} frames")
+
+    # logits = model(frames[camera_pov1], frames[camera_pov2])
+
+    # probs = F.softmax(logits, dim=1)
+    # _, pred = torch.argmax(probs, dim=1)
+
+    # return pred.detach.cpu().int()
 
 def grab_frame(rtsp_url: str) -> Image.Image:
 
@@ -77,6 +86,7 @@ def camera_worker(camera_id: int, rtsp_url: str):
             tensor = tensor.permute(0, 3, 2, 1)
             resized = transform_test(tensor)
             resized = resized.permute(1, 0, 2, 3)
+
         except Exception as e:
             print(f"[Camera {camera_id}] Error grabbing frame: {e}")
             continue

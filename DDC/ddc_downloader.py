@@ -12,6 +12,11 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
+# at top of your script, before calling download_audio()
+ffmpeg_dir = r"C:\Users\hummy\Downloads\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\bin"
+os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
+
+
 def sanitize_filename(filename):
     # Replace invalid characters for filenames
     invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|']
@@ -255,4 +260,6 @@ def main():
     print("Done! All files processed.")
 
 if __name__ == "__main__":
+    ffmpeg_exe = rpath = r"C:\Users\hummy\Downloads\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\bin\ffmpeg.exe"
+    ffprobe_exe = r"C:\Users\hummy\Downloads\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\bin\ffprobe.exe"
     main()

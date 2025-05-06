@@ -14,10 +14,10 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 
 #Defining RTSP URLS (ONLY NEED TO CHECK/CHANGE IF THE CAMERAS LOSE POWER AND TURN OFF)
 cameras = {
-    1: 'rtsp://root:botbot@192.168.0.111/axis-media/media.amp',
-    2: 'rtsp://root:botbot@192.168.0.114/axis-media/media.amp',
-    3: 'rtsp://root:botbot@192.168.0.129/axis-media/media.amp',
-    4: 'rtsp://root:botbot@192.168.0.134/axis-media/media.amp',
+    1: 'rtsp://root:botbot@192.168.0.116/axis-media/media.amp',
+    2: 'rtsp://root:botbot@192.168.0.115/axis-media/media.amp',
+    3: 'rtsp://root:botbot@192.168.0.135/axis-media/media.amp',
+    4: 'rtsp://root:botbot@192.168.0.130/axis-media/media.amp',
 }
 
 #Makes sure camera folder exists
@@ -68,7 +68,7 @@ class CamThread(threading.Thread):
             self.ffmpeg,
             "-i", self.rtsp,
             "-c", "copy",
-            "-t", "00:01:10",  #SET DURATION HERE
+            "-t", "00:04:00",  #SET DURATION HERE
             self.outfile
         ]
         #print(cmd)
