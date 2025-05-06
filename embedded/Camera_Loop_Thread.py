@@ -5,18 +5,26 @@ import threading
 import io
 import subprocess
 import os
+<<<<<<< HEAD
 import socket
 import json
+=======
+>>>>>>> parent of 66db6a8 (Added socket code. V1 not sure if works)
 from collections import deque
 from PIL import Image
 import numpy as np
 import torch
 from torchvision import transforms
+<<<<<<< HEAD
 import time
+=======
+
+>>>>>>> parent of 66db6a8 (Added socket code. V1 not sure if works)
 
 # PLEASE CHANGE THIS TO YOUR FILE PATH IF ITS ALREADY SQUARED AWAY THEN DELETE
 ffmpeg_dir = r"C:\Users\hummy\Downloads\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\ffmpeg-2025-03-31-git-35c091f4b7-essentials_build\bin"
 os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
+
 
 # Remember to comment out the two cameras that are not in use
 cameras = {
@@ -31,10 +39,11 @@ OUTPUT_ROOT = "Model Frames"
 for cam_id in cameras:
     os.makedirs(os.path.join(OUTPUT_ROOT, f"cam_{cam_id}"), exist_ok=True)
 
-# Barrier to sync the threads before they grab their frame
+# Barrier to sync the 4 threads before they grab their frame
 barrier = threading.Barrier(len(cameras))
 
 
+<<<<<<< HEAD
 # Direction mapping
 def get_direction_name(direction_code):
     """Convert direction code to human-readable name"""
@@ -109,25 +118,30 @@ def send_direction(direction_code):
         client_socket = None  # This resets the client_socket to None
 
 
+=======
+>>>>>>> parent of 66db6a8 (Added socket code. V1 not sure if works)
 def model_inference(camera_id: int, frames: list[Image.Image]):
     """
     frames: [oldest, middle, newest] for this camera
-
-    Returns:
-    - 0: up
-    - 1: down
-    - 2: left
-    - 3: right
-    - 4: no input
     """
-    # This is a placeholder. Replace with actual model inference
-    # For now, returning 0 as in the original code
-    direction_code = 0
 
-    # Send the direction via socket
-    send_direction(direction_code)
+    # Returns:
+    # - 0: up
+    # - 1: down
+    # - 2: left
+    # - 3: right
+    # - 4: no input
 
-    return direction_code
+    return 0
+
+    # print(f"[Camera {camera_id}] model_inference on {len(frames)} frames")
+
+    # logits = model(frames[camera_pov1], frames[camera_pov2])
+
+    # probs = F.softmax(logits, dim=1)
+    # _, pred = torch.argmax(probs, dim=1)
+
+    # return pred.detach.cpu().int()
 
 
 def grab_frame(rtsp_url: str) -> Image.Image:
@@ -192,16 +206,11 @@ def camera_worker(camera_id: int, rtsp_url: str):
 
 
 def main():
-    # Start socket server thread
-    socket_thread = threading.Thread(target=socket_server, daemon=True)
-    socket_thread.start()
-
-    # Start camera threads
-    camera_threads = []
+    threads = []
     for cam_id, url in cameras.items():
         t = threading.Thread(target=camera_worker, args=(cam_id, url), daemon=True)
         t.start()
-        camera_threads.append(t)
+        threads.append(t)
 
     print("[+] All camera threads started. Press Ctrl+C to stop.")
     try:
@@ -210,10 +219,8 @@ def main():
             threading.Event().wait(1)
     except KeyboardInterrupt:
         print("\n[!] Interrupted—exiting.")
-    finally:
-        # Clean up socket
-        server_socket.close()
 
 
 if __name__ == "__main__":
+
     main()
