@@ -41,6 +41,14 @@ def model_inference(camera_id: int, frames: list[Image.Image]):
     """
     frames: [oldest, middle, newest] for this camera
     """
+
+    # Returns:
+    # - 0: up
+    # - 1: down
+    # - 2: left
+    # - 3: right
+    # - 4: no input
+
     return 0
 
     # print(f"[Camera {camera_id}] model_inference on {len(frames)} frames")
