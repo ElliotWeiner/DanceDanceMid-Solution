@@ -23,6 +23,8 @@ import threading
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../graphics")))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../DDC")))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../embedded")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../model/")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../model/training")))
 
 
 import ddr_gui
