@@ -112,12 +112,21 @@ def main():
     print("Starting DDR Game...")
 
     try:
-        ddr_gui.DDRGame().run()
-        # import Camera_Loop_Thread
-        # cam_thread = threading.Thread(target=Camera_Loop_Thread.main(), daemon=True)
-        # cam_thread.start()
+        cam_thread = threading.Thread(
+        target=Camera_Loop_Thread.main,  # note: no () here
+        daemon=True
+        )
+        cam_thread.start()
+        print("[Main] Camera thread started.")
 
-        # cam_thread.join(timeout=1)
+    # Now run the GUI loop in the main thread.  This blocks until the user quits.
+        print("[Main] Launching DDR GUI…")
+        ddr_gui.DDRGame().run()
+        print("[Main] GUI exited, shutting down…")
+
+        # Optionally, wait a tiny bit to let camera thread clean up,
+        # or signal it to shut down if you have a stop_event.
+        cam_thread.join(timeout=1)
 
     except ImportError:
         print("Error: Could not import DDR GUI module. Make sure it's installed.")
