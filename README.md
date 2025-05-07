@@ -123,7 +123,7 @@ cameras = {
 ```
 
 ### 5.5  Pre‑Trained Weights (optional)
-Place `model_best.pth` in `model/checkpoints/` to skip training.
+Place `feet_net_final.pth` in `model/training/` to skip training.
 
 ---
 
