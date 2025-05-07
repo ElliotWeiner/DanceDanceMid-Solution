@@ -36,6 +36,8 @@ Eliot Weiner · Humzah Durrani · Sadman Kabir · Benjamin Hsu · Arthur
 
 (Add your system diagram and gameplay GIF in `docs/images/` and reference them here.)
 
+You can see a video of our project here: https://youtu.be/E3AfGzENJ2Y
+
 ---
 
 ## 2  SYSTEM OVERVIEW
