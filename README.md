@@ -83,7 +83,6 @@ Full technical background—including data governance and results—is in `docs/
 | Vision I/O | numpy, Pillow, opencv‑python                  |
 | Media      | FFmpeg (CLI), ffmpeg‑python (optional)        |
 | GUI        | pygame                                        |
-| Utilities  | yt‑dlp, selenium, webdriver‑manager           |
 | OS deps    | Python 3.10+, Git, Google Chrome/Chromium     |
 
 `requirements.txt` lists exact versions.
