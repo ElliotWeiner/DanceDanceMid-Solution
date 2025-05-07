@@ -315,8 +315,8 @@ class DDRGame:
             else:
                 # Map the publisher's direction codes to our game's direction indices
                 game_direction = {
-                    0: 2,  # UP -> UP
-                    1: 1,  # DOWN -> DOWN
+                    0: 1,  # UP -> UP
+                    1: 2,  # DOWN -> DOWN
                     2: 0,  # LEFT -> LEFT
                     3: 3,  # RIGHT -> RIGHT
                 }.get(direction_code, -1)
