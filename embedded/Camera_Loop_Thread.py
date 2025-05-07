@@ -11,6 +11,7 @@ import traceback
 import numpy as np
 import torch
 import torchvision.transforms as T
+from FeetNet import FeetNet
 from datetime import datetime
 from PIL import Image, ImageSequence
 
@@ -101,6 +102,12 @@ merge_lock = threading.Lock()
 stop_event = threading.Event()
 
 
+# Model
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = FeetNet(2).to(device)
+model.load_state_dict(torch.load("../model/training/final_feet_net_pres.pth", weights_only=True))
+model.eval()
+
 # ─── HELPERS ──────────────────────────────────────────────────────────────────
 def start_ffmpeg_stream(rtsp_url):
     return subprocess.Popen(
@@ -136,10 +143,15 @@ norm_transform = T.Normalize((0.4316, 0.3945, 0.3765), (0.2280, 0.2215, 0.2170))
 
 def run_model(cam1_tensor, cam2_tensor):
     # TODO: replace with your actual model
-
-
+    
     # 0: UP, 1: DOWN, 2: LEFT, 3: RIGHT, 4: NONE
-    return 0
+    out = model(cam1_tensor, cam2_tensor)
+    probs = torch.nn.functional.softmax(out, dim=1)
+    pred = torch.max(probs.data, 1)
+
+    res = pred.cpu().detach().int()
+    
+    return res
 
 
 # ─── THREADS ──────────────────────────────────────────────────────────────────
@@ -240,7 +252,7 @@ def processing_worker(wid):
                     arr = np.array(im)
                     crop_arr = arr[112 : 480 - 112, 224 : 704 - 224, :]
                     pil_crop = Image.fromarray(crop_arr)
-                    t = pil_transform(pil_crop)
+                    t = pil_transform(pil_crop).to("cuda")
                     t = norm_transform(t)
                     processed.append(t)
                 cam_tensors[cid] = torch.stack(processed, dim=0)
