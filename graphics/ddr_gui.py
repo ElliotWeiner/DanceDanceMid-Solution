@@ -289,11 +289,6 @@ class DDRGame:
         """Process input data received from socket"""
         # Map direction codes to our key handling
         direction_code = data.get("direction_code", -1)
-        confidence = data.get("confidence", 0.0)
-
-        # Only process strong confidence signals
-        if confidence < 0.5:
-            return
 
         # Store the input for processing in the main thread
         with self.socket_lock:
@@ -834,7 +829,6 @@ class DDRGame:
                         )
                         self.miss_sound.play()
 
-                # Calculate positions for all notes
                 # Calculate positions for all notes
                 for note in self.sm_data.notes:
                     note_time = self.beat_time_to_seconds(note.beat_time)
