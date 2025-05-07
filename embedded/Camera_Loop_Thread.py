@@ -136,6 +136,9 @@ norm_transform = T.Normalize((0.4316, 0.3945, 0.3765), (0.2280, 0.2215, 0.2170))
 
 def run_model(cam1_tensor, cam2_tensor):
     # TODO: replace with your actual model
+
+
+    # 0: UP, 1: DOWN, 2: LEFT, 3: RIGHT, 4: NONE
     return 0
 
 
