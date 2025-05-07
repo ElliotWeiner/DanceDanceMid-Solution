@@ -15,23 +15,24 @@ from datetime import datetime
 from PIL import Image, ImageSequence
 
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
-RTSP_URLS         = {
+RTSP_URLS = {
     2: "rtsp://root:botbot@192.168.1.131/axis-media/media.amp",
     3: "rtsp://root:botbot@192.168.1.160/axis-media/media.amp",
 }
-OUTPUT_ROOT       = os.path.abspath("Model Frames")
-BUFFER_LEN        = 3
+OUTPUT_ROOT = os.path.abspath("Model Frames")
+BUFFER_LEN = 3
 NUM_INFER_WORKERS = 2
+
 
 # ─── SOCKET SERVER ────────────────────────────────────────────────────────────
 class SocketServer:
     def __init__(self, host="localhost", port=12345):
-        self.host          = host
-        self.port          = port
+        self.host = host
+        self.port = port
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_socket = None
-        self.counter       = 0
-        self.running       = True
+        self.counter = 0
+        self.running = True
 
     def start(self):
         t = threading.Thread(target=self._run_server, daemon=True)
@@ -56,16 +57,16 @@ class SocketServer:
     def send_direction(self, direction_code: int):
         if not self.client_socket:
             return
-        directions    = {0: "UP", 1: "DOWN", 2: "LEFT", 3: "RIGHT", 4: "NONE"}
-        name          = directions.get(direction_code, "UNKNOWN")
+        directions = {0: "UP", 1: "DOWN", 2: "LEFT", 3: "RIGHT", 4: "NONE"}
+        name = directions.get(direction_code, "UNKNOWN")
         self.counter += 1
-        ts            = datetime.now().strftime("%H:%M:%S.%f")[:-3]
-        msg           = {
-            "counter":        self.counter,
+        ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        msg = {
+            "counter": self.counter,
             "direction_code": direction_code,
-            "direction":      name,
-            "timestamp":      ts,
-            "message":        name
+            "direction": name,
+            "timestamp": ts,
+            "message": name,
         }
         try:
             print("mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm")
@@ -79,47 +80,69 @@ class SocketServer:
     def close(self):
         self.running = False
         if self.client_socket:
-            try: self.client_socket.close()
-            except: pass
+            try:
+                self.client_socket.close()
+            except:
+                pass
         try:
             self.server_socket.close()
-        except: pass
+        except:
+            pass
         print("\n[Socket] Server closed")
+
 
 socket_server = SocketServer()
 
 # ─── QUEUES & STATE ────────────────────────────────────────────────────────────
-frame_queue     = queue.Queue(maxsize=500)   # (cam_id, [PIL imgs], ts)
-inference_queue = queue.Queue(maxsize=100)   # {cam_id: gif_path, ...}
-merge_buffer    = {}
-merge_lock      = threading.Lock()
-stop_event      = threading.Event()
+frame_queue = queue.Queue(maxsize=500)  # (cam_id, [PIL imgs], ts)
+inference_queue = queue.Queue(maxsize=100)  # {cam_id: gif_path, ...}
+merge_buffer = {}
+merge_lock = threading.Lock()
+stop_event = threading.Event()
+
 
 # ─── HELPERS ──────────────────────────────────────────────────────────────────
 def start_ffmpeg_stream(rtsp_url):
-    return subprocess.Popen([
-        "ffmpeg", "-rtsp_transport", "tcp", "-i", rtsp_url,
-        "-loglevel", "quiet", "-vf", "fps=10", "-q:v", "5",
-        "-f", "mjpeg", "-"
-    ], stdout=subprocess.PIPE, bufsize=0)
+    return subprocess.Popen(
+        [
+            "ffmpeg",
+            "-rtsp_transport",
+            "tcp",
+            "-i",
+            rtsp_url,
+            "-loglevel",
+            "quiet",
+            "-vf",
+            "fps=10",
+            "-q:v",
+            "5",
+            "-f",
+            "mjpeg",
+            "-",
+        ],
+        stdout=subprocess.PIPE,
+        bufsize=0,
+    )
 
-pil_transform = T.Compose([
-    T.Resize((112, 112)),
-    T.ToTensor(),
-])
-norm_transform = T.Normalize(
-    (0.4316, 0.3945, 0.3765),
-    (0.2280, 0.2215, 0.2170)
+
+pil_transform = T.Compose(
+    [
+        T.Resize((112, 112)),
+        T.ToTensor(),
+    ]
 )
+norm_transform = T.Normalize((0.4316, 0.3945, 0.3765), (0.2280, 0.2215, 0.2170))
+
 
 def run_model(cam1_tensor, cam2_tensor):
     # TODO: replace with your actual model
     return 0
 
+
 # ─── THREADS ──────────────────────────────────────────────────────────────────
 def camera_worker(cam_id, rtsp_url):
     while not stop_event.is_set():
-        proc   = start_ffmpeg_stream(rtsp_url)
+        proc = start_ffmpeg_stream(rtsp_url)
         buffer = bytearray()
         frames = []
         print(f"[Camera{cam_id}] FFmpeg started.")
@@ -130,12 +153,12 @@ def camera_worker(cam_id, rtsp_url):
                     raise IOError("EOF from FFmpeg")
                 buffer.extend(chunk)
                 while True:
-                    soi = buffer.find(b'\xff\xd8')
-                    eoi = buffer.find(b'\xff\xd9', soi+2)
+                    soi = buffer.find(b"\xff\xd8")
+                    eoi = buffer.find(b"\xff\xd9", soi + 2)
                     if soi < 0 or eoi < 0:
                         break
-                    jpeg = bytes(buffer[soi:eoi+2])
-                    del buffer[:eoi+2]
+                    jpeg = bytes(buffer[soi : eoi + 2])
+                    del buffer[: eoi + 2]
                     try:
                         img = Image.open(io.BytesIO(jpeg)).convert("RGB")
                     except:
@@ -156,6 +179,7 @@ def camera_worker(cam_id, rtsp_url):
             proc.kill()
     print(f"[Camera{cam_id}] exiting.")
 
+
 def merging_worker():
     while not stop_event.is_set():
         try:
@@ -170,16 +194,21 @@ def merging_worker():
                 gifs = {}
                 for cid, (frm, st) in merge_buffer.items():
                     path = os.path.join(OUTPUT_ROOT, f"cam_{cid}", f"cam{cid}_{st}.gif")
-                    frm[0].save(path, save_all=True, append_images=frm[1:], duration=100, loop=0)
+                    frm[0].save(
+                        path, save_all=True, append_images=frm[1:], duration=100, loop=0
+                    )
                     print(f"[Merger] wrote {path}")
                     gifs[cid] = path
                 merge_buffer.clear()
                 try:
                     inference_queue.put_nowait(gifs)
-                    print(f"[Merger] job→inference {gifs} (inference_queue size={inference_queue.qsize()})")
+                    print(
+                        f"[Merger] job→inference {gifs} (inference_queue size={inference_queue.qsize()})"
+                    )
                 except queue.Full:
                     print("[Merger] inference_queue FULL")
     print("[Merger] exiting.")
+
 
 def processing_worker(wid):
     while not stop_event.is_set():
@@ -196,16 +225,20 @@ def processing_worker(wid):
             cam_tensors = {}
             for cid, path in gif_paths.items():
                 gif = Image.open(path)
-                raw = [frame.convert("RGB") for i, frame in enumerate(ImageSequence.Iterator(gif)) if i < BUFFER_LEN]
+                raw = [
+                    frame.convert("RGB")
+                    for i, frame in enumerate(ImageSequence.Iterator(gif))
+                    if i < BUFFER_LEN
+                ]
                 gif.close()
 
                 processed = []
                 for im in raw:
-                    arr      = np.array(im)
-                    crop_arr = arr[112:480-112, 224:704-224, :]
+                    arr = np.array(im)
+                    crop_arr = arr[112 : 480 - 112, 224 : 704 - 224, :]
                     pil_crop = Image.fromarray(crop_arr)
-                    t        = pil_transform(pil_crop)
-                    t        = norm_transform(t)
+                    t = pil_transform(pil_crop)
+                    t = norm_transform(t)
                     processed.append(t)
                 cam_tensors[cid] = torch.stack(processed, dim=0)
                 print(f"[Infer{wid}] cam{cid}: {cam_tensors[cid].shape}")
@@ -220,6 +253,7 @@ def processing_worker(wid):
             continue
 
     print(f"[Infer{wid}] exiting.")
+
 
 # ─── MAIN ─────────────────────────────────────────────────────────────────────
 def main():
@@ -245,6 +279,7 @@ def main():
         time.sleep(1)
         socket_server.close()
         sys.exit(0)
+
 
 if __name__ == "__main__":
     main()
