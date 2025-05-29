@@ -105,7 +105,7 @@ stop_event = threading.Event()
 # Model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = FeetNet(2).to(device)
-model.load_state_dict(torch.load("../model/training/final_feet_net_pres.pth", weights_only=True))
+model.load_state_dict(torch.load("../model/training/final_feet_net.pth", weights_only=True))
 model.eval()
 
 # ─── HELPERS ──────────────────────────────────────────────────────────────────
