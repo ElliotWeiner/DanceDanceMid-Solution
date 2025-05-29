@@ -17,8 +17,8 @@ from PIL import Image, ImageSequence
 
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
 RTSP_URLS = {
-    2: "rtsp://root:botbot@192.168.1.131/axis-media/media.amp",
-    3: "rtsp://root:botbot@192.168.1.160/axis-media/media.amp",
+    2: "rtsp://root:botbot@192.168.0.108/axis-media/media.amp",
+    3: "rtsp://root:botbot@192.168.0.131/axis-media/media.amp",
 }
 OUTPUT_ROOT = os.path.abspath("Model Frames")
 BUFFER_LEN = 3
