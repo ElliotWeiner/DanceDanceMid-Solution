@@ -105,7 +105,7 @@ stop_event = threading.Event()
 # Model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = FeetNet(2).to(device)
-model.load_state_dict(torch.load("../model/training/final_feet_net.pth", weights_only=True))
+model.load_state_dict(torch.load("../model/training/final_feet_net.pth", weights_only=True, map_location="cpu"))
 model.eval()
 
 # ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -147,9 +147,11 @@ def run_model(cam1_tensor, cam2_tensor):
     # 0: UP, 1: DOWN, 2: LEFT, 3: RIGHT, 4: NONE
     out = model(cam1_tensor, cam2_tensor)
     probs = torch.nn.functional.softmax(out, dim=1)
-    pred = torch.max(probs.data, 1)
+    pred, index = torch.max(probs.data, 1)
 
-    res = pred.cpu().detach().int()
+    res = index.detach().int()
+
+    print("Result: ", res)
     
     return res
 
@@ -252,10 +254,10 @@ def processing_worker(wid):
                     arr = np.array(im)
                     crop_arr = arr[112 : 480 - 112, 224 : 704 - 224, :]
                     pil_crop = Image.fromarray(crop_arr)
-                    t = pil_transform(pil_crop).to("cuda")
+                    t = pil_transform(pil_crop).to("cpu")
                     t = norm_transform(t)
                     processed.append(t)
-                cam_tensors[cid] = torch.stack(processed, dim=0)
+                cam_tensors[cid] = torch.stack(processed, dim=0).unsqueeze(0)
                 print(f"[Infer{wid}] cam{cid}: {cam_tensors[cid].shape}")
 
             code = run_model(cam_tensors[2], cam_tensors[3])
